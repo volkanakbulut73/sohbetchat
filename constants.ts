@@ -1,0 +1,1 @@
+// Bu dosya içeriği types.ts dosyasına taşınmıştır.

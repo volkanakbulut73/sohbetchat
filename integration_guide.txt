@@ -1,0 +1,31 @@
+
+WORKIGOM CHAT - MODERN ENTEGRASYON REHBERİ (SDK v1.1.1)
+
+-------------------------------------------------------------------
+KOPYALA-YAPIŞTIR (Workigom.com İçin)
+-------------------------------------------------------------------
+Aşağıdaki kod, ana sitenizin (workigom.com) tasarımını bozmadan 
+doğrudan giriş ekranını açar. 
+
+<!-- Workigom Chat SDK Başlangıç -->
+<script type="module" crossorigin src="https://workigomchat.online/index.js"></script>
+
+<div id="workigom-chat-container" style="height: 600px; width: 100%; border: 1px solid #222;"></div>
+
+<script>
+  window.addEventListener('load', () => {
+    if (window.initWorkigomChat) {
+      window.initWorkigomChat('workigom-chat-container', {
+        embedded: true // Landing sayfasını gizler, doğrudan girişe yönlendirir
+      });
+    }
+  });
+</script>
+<!-- Workigom Chat SDK Bitiş -->
+
+-------------------------------------------------------------------
+PARAMETRELER
+-------------------------------------------------------------------
+- embedded: (true/false) Tanıtım sayfasını gizler. SDK kullanımlarında true olmalıdır.
+- externalUser: (string) Eğer sitenizde kullanıcı zaten login ise nickini geçebilirsiniz.
+- className: (string) Container için özel CSS classları.
