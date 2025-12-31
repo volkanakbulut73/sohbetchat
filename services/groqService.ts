@@ -1,42 +1,58 @@
 
 import { storageService } from "./storageService";
 import { Participant, Message } from '../types';
-import { GoogleGenAI } from "@google/genai";
 
 /**
- * AI Configuration using Google GenAI SDK
- * Using gemini-3-flash-preview for high speed and performance
+ * Groq API Configuration
+ * Gemini tamamen kaldırıldı, Llama 3.3 (Groq) kullanılıyor.
  */
-const MODEL = "gemini-3-flash-preview";
+const GROQ_MODEL = "llama-3.3-70b-versatile";
+const GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions";
 
 /**
- * Shared function to call Gemini API
+ * Doğrudan Groq API çağrısı yapan fonksiyon
  */
-async function callGeminiApi(contents: string, systemInstruction?: string): Promise<string> {
+async function callGroqApi(messages: any[], systemInstruction?: string): Promise<string> {
     try {
-        // ALWAYS create a new instance right before making an API call 
-        // to ensure it uses the most up-to-date API key from the environment.
-        const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-        
-        const response = await ai.models.generateContent({
-            model: MODEL,
-            contents: contents,
-            config: {
-                systemInstruction: systemInstruction,
-                temperature: 0.8,
+        const apiKey = process.env.API_KEY;
+        if (!apiKey) {
+            throw new Error("Sistemde API anahtarı bulunamadı.");
+        }
+
+        const payload = {
+            model: GROQ_MODEL,
+            messages: [
+                ...(systemInstruction ? [{ role: "system", content: systemInstruction }] : []),
+                ...messages
+            ],
+            temperature: 0.8,
+            max_tokens: 500
+        };
+
+        const response = await fetch(GROQ_API_URL, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${apiKey}`,
+                'Content-Type': 'application/json'
             },
+            body: JSON.stringify(payload)
         });
 
-        // Use the .text property (getter) to access output
-        return response.text || "...";
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error?.message || `HTTP hatası! Durum: ${response.status}`);
+        }
+
+        const data = await response.json();
+        return data.choices?.[0]?.message?.content || "...";
     } catch (error) {
-        console.error("Gemini API Error:", error);
-        return "... (Bağlantı hatası: API anahtarı veya ağ sorunu)";
+        console.error("Groq API Hatası:", error);
+        return "... (Bağlantı hatası: Groq servisi şu an yanıt vermiyor)";
     }
 }
 
 /**
- * Function used by the main App.tsx (Modern UI)
+ * App.tsx tarafından kullanılan ana bot yanıt fonksiyonu
  */
 export const generateBotResponse = async (
     targetBot: Participant,
@@ -45,60 +61,63 @@ export const generateBotResponse = async (
     topic: string
 ): Promise<string> => {
     
-    // 1. Prepare Context
+    // 1. Bağlam Hazırlığı
     const participantDescriptions = allParticipants
-        .map(p => `- ${p.name} (${p.isAi ? 'Yapay Zeka' : 'İnsan'}): ${p.persona}`)
+        .map(p => `- ${p.name} (${p.isAi ? 'Bot' : 'İnsan'}): ${p.persona}`)
         .join('\n');
 
-    const recentMessages = chatHistory.slice(-15);
-    const conversationLog = recentMessages.map(msg => {
+    const recentMessages = chatHistory.slice(-10);
+    const conversationHistory = recentMessages.map(msg => {
         const sender = allParticipants.find(p => p.id === msg.senderId);
         const senderName = sender ? sender.name : 'Bilinmeyen';
-        return `${senderName}: ${msg.text}`;
-    }).join('\n');
+        return {
+            role: sender?.id === targetBot.id ? "assistant" : "user",
+            content: `${senderName}: ${msg.text}`
+        };
+    });
 
-    // 2. Construct System Instruction
+    // 2. Sistem Talimatı Oluşturma
     const systemPrompt = `
-Bu bir grup sohbeti simülasyonudur.
+Sen bir mIRC sohbet odasındasın.
 Konu: ${topic}
 
-Katılımcılar:
+Odadaki Katılımcılar:
 ${participantDescriptions}
 
-Senin Rolün:
+Senin Karakterin:
 Adın: ${targetBot.name}
 Kişiliğin: ${targetBot.persona}
 
-Kurallar:
-1. Sadece ${targetBot.name} olarak cevap ver.
-2. Adını mesajın başına yazma.
-3. Rolüne sadık kal, kısa, samimi ve doğal bir mIRC kullanıcısı gibi konuş.
-4. Diğer katılımcıların mesajlarına atıfta bulunabilirsin.
-5. Türkçe karakterleri düzgün kullan ama internet jargonuna (mIRC) hakim ol.
+KURALLAR:
+1. SADECE ${targetBot.name} olarak konuş.
+2. Mesajın başına adını veya "Assistant:" yazma.
+3. mIRC jargonunu kullan (kısa, samimi, bazen emojili).
+4. Diğer kullanıcıların yazdıklarına göre doğal tepkiler ver.
+5. Türkçe karakter kullan ama internet diline sadık kal.
 `;
 
-    // 3. Construct current turn
-    const userPrompt = `Sohbet Geçmişi:\n${conversationLog}\n\n(Sıra sende, ${targetBot.name} olarak cevap ver)`;
+    const groqMessages = conversationHistory.map(m => ({
+        role: m.role as "user" | "assistant",
+        content: m.content
+    }));
 
-    return await callGeminiApi(userPrompt, systemPrompt);
+    return await callGroqApi(groqMessages, systemPrompt);
 };
 
 /**
- * Legacy Service Object
+ * Eski yapı için uyumluluk nesnesi
  */
 export const groqService = {
   async getChatResponse(prompt: string, sender: string): Promise<string> {
     try {
       const botPersonality = await storageService.getBotConfig();
-
       const systemInstruction = `${botPersonality}
-      - Sohbet ettiğin kişinin nicki: ${sender}.
-      - Cevapların kısa, öz ve Türkçe olsun.
-      - mIRC jargonunu asla bırakma.`;
+      - Sohbet ettiğin nick: ${sender}.
+      - Yanıtlar mIRC kültürüne uygun olsun.`;
 
-      return await callGeminiApi(prompt, systemInstruction);
+      return await callGroqApi([{ role: "user", content: prompt }], systemInstruction);
     } catch (error) {
-      return "Sistem: Bağlantı hatası oluştu (Ping timeout).";
+      return "Sistem: Bağlantı hatası (Groq Timeout).";
     }
   }
 };
