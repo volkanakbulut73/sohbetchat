@@ -206,6 +206,7 @@ const App: React.FC = () => {
           ))}
         </div>
 
+        <div className="flex-1 flex bg-white relative overflow-hidden m-0 p-0">
           <ChatArea 
             room={activeRoom} 
             currentUser={currentUser} 
