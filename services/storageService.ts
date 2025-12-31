@@ -86,6 +86,23 @@ export const storageService = {
     } catch (e) { handleFetchError(e, 'registerUser'); }
   },
 
+  async registerGoogleUser(email: string, fullName: string, nickname: string) {
+    try {
+      const response: any = await retryRequest(() => supabase.from('registrations').insert({
+        nickname: nickname,
+        full_name: fullName,
+        email: email,
+        password: 'google_oauth_no_password',
+        status: 'pending'
+      }));
+      const { error } = response;
+      if (error) {
+        if (error.code === '23505') return; // Zaten varsa pas geç
+        throw error;
+      }
+    } catch (e) { handleFetchError(e, 'registerGoogleUser'); }
+  },
+
   async loginUser(email: string, pass: string): Promise<UserRegistration | null> {
     try {
       const response: any = await retryRequest(() => supabase
@@ -101,9 +118,30 @@ export const storageService = {
       if (data.status === 'pending') throw new Error('Hesabınız henüz onaylanmadı. Lütfen bekleyiniz.');
       return { ...data, fullName: data.full_name } as UserRegistration;
     } catch (e) { 
-      if (e.message && e.message.includes('onaylanmadı')) throw e;
+      if (e.message && (e.message.includes('onaylanmadı') || e.message.includes('bekleyiniz'))) throw e;
       if (e.message && e.message.includes('reddedildi')) throw e;
       handleFetchError(e, 'loginUser'); 
+      return null; 
+    }
+  },
+
+  async loginWithGoogle(email: string): Promise<UserRegistration | null> {
+    try {
+      const response: any = await retryRequest(() => supabase
+        .from('registrations')
+        .select('*')
+        .eq('email', email)
+        .maybeSingle());
+      const { data, error } = response;
+      if (error) throw error;
+      if (!data) return null;
+      if (data.status === 'rejected') throw new Error('Bu Google hesabına bağlı başvuru reddedildi.');
+      if (data.status === 'pending') throw new Error('Google hesabınızla ilişkili başvuru henüz onaylanmadı. Admin onayı bekleniyor.');
+      return { ...data, fullName: data.full_name } as UserRegistration;
+    } catch (e) { 
+      if (e.message && (e.message.includes('onaylanmadı') || e.message.includes('bekleniyor'))) throw e;
+      if (e.message && e.message.includes('reddedildi')) throw e;
+      handleFetchError(e, 'loginWithGoogle'); 
       return null; 
     }
   },
