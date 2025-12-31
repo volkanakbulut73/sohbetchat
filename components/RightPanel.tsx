@@ -48,14 +48,14 @@ export const RightPanel: React.FC<RightPanelProps> = ({
   });
 
   return (
-    <div className="w-16 flex flex-col h-full font-mono text-[9px] select-none bg-white border-l border-gray-100 shrink-0">
+    <div className="w-12 flex flex-col h-full font-mono text-[8px] select-none bg-white border-l border-gray-100 shrink-0">
         
         {/* Header Count */}
         <div className="bg-[#f8fafc] border-b border-gray-100 p-1 font-bold text-center text-gray-400 uppercase flex flex-col items-center">
-            <span className="truncate">U:{room.participants.length}</span>
+            <span className="truncate leading-tight">U:{room.participants.length}</span>
             <button 
                 onClick={() => setIsAdding(!isAdding)} 
-                className="text-blue-400 hover:text-blue-700 font-bold text-[10px]"
+                className="text-blue-400 hover:text-blue-700 font-black text-[10px] mt-0.5"
                 title="Bot Ekle"
             >
                 [+]
@@ -64,26 +64,26 @@ export const RightPanel: React.FC<RightPanelProps> = ({
 
         {/* Add Bot Form (Overlay) */}
         {isAdding && (
-            <div className="absolute top-10 right-1 w-32 bg-white border border-gray-200 shadow-xl rounded-xl p-2 z-20">
+            <div className="absolute top-10 right-2 w-32 bg-white border border-gray-200 shadow-xl rounded-lg p-2 z-20">
                 <form onSubmit={handleAddSubmit} className="space-y-2">
-                    <div className="text-[8px] font-black text-gray-400 mb-1 uppercase tracking-widest">Bot Ekle</div>
+                    <div className="text-[7px] font-black text-gray-400 mb-1 uppercase tracking-widest">Bot Ekle</div>
                     <input 
-                        className="w-full border border-gray-100 bg-gray-50 rounded-lg p-1.5 h-7 text-[9px] outline-none focus:border-blue-400" 
+                        className="w-full border border-gray-100 bg-gray-50 rounded p-1 h-6 text-[9px] outline-none focus:border-blue-400" 
                         placeholder="Ad..."
                         autoFocus
                         value={newBotName}
                         onChange={e => setNewBotName(e.target.value)}
                     />
                     <div className="flex gap-1">
-                        <button type="submit" className="flex-1 bg-blue-600 text-white rounded-lg text-[8px] font-bold p-1 hover:bg-blue-700">EKLE</button>
-                        <button type="button" onClick={() => setIsAdding(false)} className="flex-1 bg-gray-100 text-gray-400 rounded-lg text-[8px] font-bold p-1 text-center">X</button>
+                        <button type="submit" className="flex-1 bg-blue-600 text-white rounded text-[8px] font-bold p-1 hover:bg-blue-700">EKLE</button>
+                        <button type="button" onClick={() => setIsAdding(false)} className="flex-1 bg-gray-100 text-gray-400 rounded text-[8px] font-bold p-1 text-center">X</button>
                     </div>
                 </form>
             </div>
         )}
 
         {/* List */}
-        <div className="flex-1 overflow-y-auto no-scrollbar py-1">
+        <div className="flex-1 overflow-y-auto no-scrollbar py-0.5">
             {sortedParticipants.map(p => {
                 let prefix = "";
                 let colorClass = "text-gray-800";
@@ -99,14 +99,14 @@ export const RightPanel: React.FC<RightPanelProps> = ({
                 return (
                     <div 
                         key={p.id} 
-                        className="group flex flex-col items-center px-0.5 py-1 hover:bg-blue-50 cursor-pointer rounded transition-colors text-center"
+                        className="group flex flex-col items-center px-0.5 py-1 hover:bg-blue-50 cursor-pointer transition-colors text-center overflow-hidden"
                         title={p.name}
                         onDoubleClick={() => onUserDoubleClick(p)}
                     >
-                        <span className={`font-black text-[10px] ${colorClass} leading-none`}>
+                        <span className={`font-black text-[9px] ${colorClass} leading-none mb-0.5`}>
                             {prefix}
                         </span>
-                        <span className={`truncate w-full font-bold ${colorClass}`}>
+                        <span className={`truncate w-full font-bold ${colorClass} tracking-tighter`}>
                             {p.name}
                         </span>
                     </div>
