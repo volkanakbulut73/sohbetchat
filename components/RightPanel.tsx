@@ -1,12 +1,13 @@
 
 import React from 'react';
-import { ChatRoom } from '../types';
+import { ChatRoom, Participant } from '../types';
 
 interface RightPanelProps {
   room: ChatRoom;
+  onUserDoubleClick?: (user: Participant) => void;
 }
 
-export const RightPanel: React.FC<RightPanelProps> = ({ room }) => {
+export const RightPanel: React.FC<RightPanelProps> = ({ room, onUserDoubleClick }) => {
   const sortedParticipants = [...room.participants].sort((a, b) => {
     if (a.isAi === b.isAi) return a.name.localeCompare(b.name);
     return a.isAi ? -1 : 1;
@@ -21,9 +22,9 @@ export const RightPanel: React.FC<RightPanelProps> = ({ room }) => {
           let color = "text-white";
 
           // mIRC Hierarchy Colors
-          if (p.name === 'Lider') {
+          if (p.name === 'Lider' || p.name === 'Admin') {
             prefix = "&";
-            color = "text-[#ff0000]"; // Red for owner
+            color = "text-[#ff0000]"; // Red for owner/admin
           } else if (p.isAi) {
             prefix = "@";
             color = "text-[#ff8c00]"; // Orange for ops
@@ -32,13 +33,12 @@ export const RightPanel: React.FC<RightPanelProps> = ({ room }) => {
             color = "text-[#00ff00]"; // Green for users
           }
 
-          // Resimdeki seçili kullanıcı efekti simülasyonu
-          const isSelected = p.name === 'Egoist';
-
           return (
             <div 
               key={p.id} 
-              className={`flex items-center px-1 cursor-pointer transition-colors ${isSelected ? 'bg-[#000080]' : 'hover:bg-gray-800'}`}
+              onDoubleClick={() => onUserDoubleClick?.(p)}
+              className="flex items-center px-1 cursor-pointer transition-colors hover:bg-gray-800 active:bg-[#000080]"
+              title={`${p.name} ile özel sohbet başlatmak için çift tıklayın`}
             >
               <span className={`w-3.5 shrink-0 ${color}`}>{prefix}</span>
               <span className={`truncate tracking-tight ${color}`}>{p.name}</span>

@@ -63,3 +63,12 @@
   @apply bg-[#000080] text-white;
   box-shadow: inset 1px 1px 0px rgba(255,255,255,0.3);
 }
+
+@keyframes flash-red {
+  0%, 100% { background-color: white; color: black; }
+  50% { background-color: #ff0000; color: white; }
+}
+
+.mirc-flash-red {
+  animation: flash-red 0.5s infinite;
+}
