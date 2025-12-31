@@ -15,22 +15,20 @@ export const RightPanel: React.FC<RightPanelProps> = ({ room, onUserDoubleClick 
 
   return (
     <div className="w-[120px] bg-black border-l border-[#808080] flex flex-col shrink-0">
-      {/* Scrollable list */}
       <div className="flex-1 overflow-y-auto px-1 py-1 font-bold text-[13px] mirc-text">
-        {sortedParticipants.map((p, idx) => {
+        {sortedParticipants.map((p) => {
           let prefix = "";
           let color = "text-white";
 
-          // mIRC Hierarchy Colors
           if (p.name === 'Lider' || p.name === 'Admin') {
             prefix = "&";
-            color = "text-[#ff0000]"; // Red for owner/admin
+            color = "text-[#ff0000]"; 
           } else if (p.isAi) {
             prefix = "@";
-            color = "text-[#ff8c00]"; // Orange for ops
+            color = "text-[#ff8c00]"; 
           } else {
             prefix = "+";
-            color = "text-[#00ff00]"; // Green for users
+            color = "text-[#00ff00]"; 
           }
 
           return (
@@ -46,9 +44,9 @@ export const RightPanel: React.FC<RightPanelProps> = ({ room, onUserDoubleClick 
           );
         })}
         
-        {/* Mock additional users for mIRC feel */}
+        {/* Mock/Dekoratif kullanıcılar */}
         {['Ayaz', 'AyŞee', 'CaNn', 'CemRee', 'CiciKizz', 'efsuN'].map(name => (
-          <div key={name} className="flex items-center px-1 hover:bg-gray-800 cursor-pointer">
+          <div key={name} className="flex items-center px-1 hover:bg-gray-800 cursor-pointer opacity-70">
             <span className="w-3.5 shrink-0"></span>
             <span className="truncate tracking-tight text-white">{name}</span>
           </div>

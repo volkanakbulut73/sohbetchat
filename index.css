@@ -64,11 +64,13 @@
   box-shadow: inset 1px 1px 0px rgba(255,255,255,0.3);
 }
 
+/* Yanıp Sönen Kırmızı Uyarı */
 @keyframes flash-red {
-  0%, 100% { background-color: white; color: black; }
-  50% { background-color: #ff0000; color: white; }
+  0%, 100% { background-color: #ffffff; color: #000000; }
+  50% { background-color: #ff0000; color: #ffffff; }
 }
 
 .mirc-flash-red {
-  animation: flash-red 0.5s infinite;
+  animation: flash-red 0.8s infinite;
+  font-weight: bold;
 }

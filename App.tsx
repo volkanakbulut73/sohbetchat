@@ -8,7 +8,7 @@ import AdminDashboard from './components/AdminDashboard';
 import { ChatRoom, Message, Participant, LoadingState, INITIAL_ROOM, INITIAL_USER, PREMADE_BOTS, UserRegistration, MessageType } from './types';
 import { generateBotResponse } from './services/groqService';
 import { storageService } from './services/storageService';
-import { Power, Shield, List, Radio, UserCheck, MessageSquare, UserX } from 'lucide-react';
+import { Power, Shield, List, Radio, UserCheck, MessageSquare, UserX, UserCheck2 } from 'lucide-react';
 
 const App: React.FC = () => {
   const [currentView, setCurrentView] = useState<'LANDING' | 'CHAT' | 'REGISTER' | 'ADMIN'>('LANDING');
@@ -20,7 +20,7 @@ const App: React.FC = () => {
   
   const activeRoom = useMemo(() => rooms.find(r => r.id === activeRoomId) || rooms[0], [rooms, activeRoomId]);
 
-  // Katılımcıları ve Onaylı Kullanıcıları Senkronize Et
+  // Katılımcıları Senkronize Et
   const syncRealUsers = useCallback(async () => {
     if (!storageService.isConfigured()) return;
     try {
@@ -43,11 +43,10 @@ const App: React.FC = () => {
     } catch (err) { console.error("User sync error:", err); }
   }, [currentUser]);
 
-  // Mesajları Senkronize Et (Polling)
+  // Mesajları Senkronize Et
   const syncMessages = useCallback(async () => {
     if (!storageService.isConfigured() || currentView !== 'CHAT') return;
     try {
-      // All rooms sync
       for (const room of rooms) {
         const dbMessages = await storageService.getMessagesByChannel(room.name);
         
@@ -55,25 +54,20 @@ const App: React.FC = () => {
           if (r.name !== room.name) return r;
           
           const existingIds = new Set(r.messages.map(m => m.id));
-          const newMessagesFromDb = dbMessages.filter(m => !existingIds.has(m.id));
-          
-          if (newMessagesFromDb.length === 0) return r;
-
-          const processedMessages = newMessagesFromDb.map(m => {
+          const newMessages = dbMessages.filter(m => !existingIds.has(m.id)).map(m => {
             const senderPart = r.participants.find(p => p.name === m.sender);
-            return {
-              ...m,
-              senderId: senderPart?.id || 'system'
-            };
+            return { ...m, senderId: senderPart?.id || 'system' };
           });
 
-          // Check for alerts: if room is not active and there's a new message
-          const shouldAlert = room.id !== activeRoomId && processedMessages.length > 0;
+          if (newMessages.length === 0) return r;
+
+          // Eğer oda aktif değilse ve yeni mesaj geldiyse uyarı (flash) yak
+          const shouldAlert = r.id !== activeRoomId && newMessages.length > 0;
 
           return {
             ...r,
-            messages: [...r.messages, ...processedMessages].sort((a, b) => a.timestamp - b.timestamp),
-            lastMessageAt: Math.max(r.lastMessageAt, ...processedMessages.map(m => m.timestamp)),
+            messages: [...r.messages, ...newMessages].sort((a, b) => a.timestamp - b.timestamp),
+            lastMessageAt: Math.max(r.lastMessageAt, ...newMessages.map(m => m.timestamp)),
             hasAlert: r.hasAlert || shouldAlert
           };
         }));
@@ -114,7 +108,6 @@ const App: React.FC = () => {
 
   const handleSendMessage = useCallback(async (text: string) => {
     if (!text.trim()) return;
-
     try {
       await storageService.saveMessage({
         sender: currentUser.name,
@@ -122,81 +115,47 @@ const App: React.FC = () => {
         type: MessageType.USER,
         channel: activeRoom.name
       });
-      
       syncMessages();
+    } catch (err) { console.error("Mesaj hatası:", err); }
+  }, [activeRoom.name, currentUser, syncMessages]);
 
-      if (activeRoom.type === 'channel') {
-        const bots = activeRoom.participants.filter(p => p.isAi);
-        if (bots.length > 0) {
-          const randomBot = bots[Math.floor(Math.random() * bots.length)];
-          setTimeout(() => triggerBotResponse(randomBot.id, activeRoomId), 1500);
-        }
-      }
-    } catch (err) {
-      console.error("Mesaj gönderilemedi:", err);
-    }
-  }, [activeRoomId, activeRoom.name, activeRoom.type, activeRoom.participants, currentUser, syncMessages]);
+  // Özel Sohbet Başlat (Çift Tık)
+  const handleStartPrivateChat = (target: Participant) => {
+    if (target.id === currentUser.id) return;
 
-  const triggerBotResponse = async (botId: string, roomId: string) => {
-    const targetRoom = rooms.find(r => r.id === roomId);
-    if (!targetRoom) return;
-    const bot = targetRoom.participants.find(p => p.id === botId);
-    if (!bot) return;
-
-    setLoadingState({ status: 'thinking', participantId: botId });
-    try {
-      const responseText = await generateBotResponse(bot, targetRoom.participants, targetRoom.messages, targetRoom.topic);
-      
-      await storageService.saveMessage({
-        sender: bot.name,
-        text: responseText,
-        type: MessageType.USER,
-        channel: targetRoom.name
-      });
-
-      syncMessages();
-    } catch (err) {
-      console.error("Bot yanıt hatası:", err);
-    } finally {
-      setLoadingState({ status: 'idle' });
-    }
-  };
-
-  const handleStartPrivateChat = (targetParticipant: Participant) => {
-    if (targetParticipant.id === currentUser.id) return;
+    // Sabit kanal adı oluştur (id'leri sıralayarak)
+    const sortedIds = [currentUser.id, target.id].sort();
+    const channelName = `private:${sortedIds[0]}:${sortedIds[1]}`;
     
-    // Create a deterministic room name/ID for private chats
-    const sortedIds = [currentUser.id, targetParticipant.id].sort();
-    const privateRoomName = `private:${sortedIds[0]}:${sortedIds[1]}`;
-    const existingRoom = rooms.find(r => r.name === privateRoomName);
-
+    const existingRoom = rooms.find(r => r.name === channelName);
     if (existingRoom) {
-      setActiveRoomId(existingRoom.id);
+      handleSwitchTab(existingRoom.id);
     } else {
-      const newRoom: ChatRoom = {
+      const newPrivateRoom: ChatRoom = {
         id: `room-p-${Date.now()}`,
-        name: privateRoomName,
-        topic: `${targetParticipant.name} ile özel sohbet`,
-        participants: [currentUser, targetParticipant],
+        name: channelName,
+        topic: `${target.name} ile özel mesajlaşma`,
+        participants: [currentUser, target],
         messages: [],
         lastMessageAt: Date.now(),
         type: 'private',
-        targetUserId: targetParticipant.id,
+        targetUserId: target.id,
         hasAlert: false
       };
-      setRooms(prev => [...prev, newRoom]);
-      setActiveRoomId(newRoom.id);
+      setRooms(prev => [...prev, newPrivateRoom]);
+      setActiveRoomId(newPrivateRoom.id);
     }
   };
 
-  const handleToggleBlock = (userId: string) => {
+  // Engelleme Mantığı
+  const toggleBlockUser = (userId: string) => {
     setBlockedUserIds(prev => 
       prev.includes(userId) ? prev.filter(id => id !== userId) : [...prev, userId]
     );
   };
 
-  // Filter messages based on blocked users
-  const activeRoomWithFilter = useMemo(() => {
+  // Engellenen kullanıcıların mesajlarını gösterme
+  const filteredActiveRoom = useMemo(() => {
     return {
       ...activeRoom,
       messages: activeRoom.messages.filter(m => !m.senderId || !blockedUserIds.includes(m.senderId))
@@ -213,7 +172,7 @@ const App: React.FC = () => {
       <div className="h-6 bg-[#000080] flex items-center justify-between px-1 text-white shrink-0">
         <div className="flex items-center gap-1 font-bold truncate">
           <Shield size={12} className="text-yellow-400" />
-          <span>mIRC SohbetChe Script - IRC.SohbetChe.Net - [USER: {currentUser.name}] - [{activeRoom.name} ({activeRoom.topic})]</span>
+          <span>mIRC SohbetChe Script - [USER: {currentUser.name}] - [{activeRoom.name}]</span>
         </div>
         <div className="flex gap-1">
           <button className="w-4 h-4 bg-[#c0c0c0] text-black flex items-center justify-center mirc-border">_</button>
@@ -225,26 +184,28 @@ const App: React.FC = () => {
       {/* Toolbar */}
       <div className="h-10 bg-[#f1f1f1] border-b border-[#808080] flex items-center px-1 gap-0.5 shrink-0 overflow-x-auto no-scrollbar">
         {[
-          { icon: <Power size={14} />, text: 'Kopart', onClick: () => setCurrentView('LANDING') },
-          { icon: <List size={14} />, text: 'Kanal Listesi', onClick: () => {} },
-          { icon: <Radio size={14} />, text: 'Radyo Aç/Kapat', onClick: () => {} },
-          { icon: <UserCheck size={14} />, text: 'Özeli Aç/Kapat', onClick: () => {} }
+          { icon: <Power size={14} />, text: 'Kopart' },
+          { icon: <List size={14} />, text: 'Kanal Listesi' },
+          { icon: <Radio size={14} />, text: 'Radyo Aç/Kapat' },
+          { icon: <UserCheck size={14} />, text: 'Özeli Aç/Kapat' }
         ].map((item, idx) => (
-          <button key={idx} onClick={item.onClick} className="h-8 min-w-[80px] flex flex-col items-center justify-center hover:bg-gray-200 mirc-border px-1">
+          <button key={idx} className="h-8 min-w-[80px] flex flex-col items-center justify-center hover:bg-gray-200 mirc-border px-1">
             <span className="text-yellow-600">{item.icon}</span>
             <span className="text-[9px] font-bold">{item.text}</span>
           </button>
         ))}
 
+        {/* Engelleme Butonu (Sadece Özel Mesajda Görünür) */}
         {activeRoom.type === 'private' && activeRoom.targetUserId && (
           <button 
-            onClick={() => handleToggleBlock(activeRoom.targetUserId!)}
-            className="h-8 min-w-[80px] flex flex-col items-center justify-center hover:bg-gray-200 mirc-border px-1 ml-auto"
+            onClick={() => toggleBlockUser(activeRoom.targetUserId!)}
+            className={`h-8 min-w-[80px] flex flex-col items-center justify-center mirc-border px-1 ml-auto ${blockedUserIds.includes(activeRoom.targetUserId) ? 'bg-red-100' : 'hover:bg-gray-200'}`}
           >
-            <span className="text-red-600"><UserX size={14} /></span>
-            <span className="text-[9px] font-bold">
-              {blockedUserIds.includes(activeRoom.targetUserId) ? 'ENGELİ KALDIR' : 'ENGELLE'}
-            </span>
+            {blockedUserIds.includes(activeRoom.targetUserId) ? (
+              <><UserCheck2 size={14} className="text-green-600" /><span className="text-[9px] font-bold">ENGELİ KALDIR</span></>
+            ) : (
+              <><UserX size={14} className="text-red-600" /><span className="text-[9px] font-bold">ENGELLE</span></>
+            )}
           </button>
         )}
       </div>
@@ -255,9 +216,12 @@ const App: React.FC = () => {
           <button
             key={room.id}
             onClick={() => handleSwitchTab(room.id)}
-            className={`px-3 h-5 flex items-center gap-1 border-r border-[#c0c0c0] text-[11px] font-bold transition-colors ${
-              activeRoomId === room.id ? 'bg-[#000080] text-white' : 
-              room.hasAlert ? 'mirc-flash-red' : 'hover:bg-gray-100'
+            className={`px-3 h-5 flex items-center gap-1 border-r border-[#c0c0c0] text-[11px] font-bold transition-all ${
+              activeRoomId === room.id 
+                ? 'bg-[#000080] text-white' 
+                : room.hasAlert 
+                  ? 'mirc-flash-red' 
+                  : 'hover:bg-gray-100'
             }`}
           >
             <MessageSquare size={10} /> {room.type === 'private' ? room.topic.split(' ')[0] : room.name}
@@ -268,11 +232,11 @@ const App: React.FC = () => {
       {/* Main Container */}
       <div className="flex-1 flex overflow-hidden mirc-inset bg-white m-0.5">
         <ChatArea 
-          room={activeRoomWithFilter} 
+          room={filteredActiveRoom} 
           currentUser={currentUser} 
           onSendMessage={handleSendMessage} 
           loadingState={loadingState}
-          onTriggerBot={(id) => triggerBotResponse(id, activeRoomId)}
+          onTriggerBot={() => {}} 
         />
         <RightPanel room={activeRoom} onUserDoubleClick={handleStartPrivateChat} />
       </div>
