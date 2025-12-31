@@ -83,6 +83,30 @@ const App: React.FC = () => {
     setRooms(prev => prev.map(r => r.id === roomId ? { ...r, hasAlert: false } : r));
   };
 
+  const handleStartPrivateChat = (target: Participant) => {
+    if (target.id === currentUser.id) return;
+    
+    const roomId = `private-${target.id}`;
+    const existingRoom = rooms.find(r => r.id === roomId);
+
+    if (existingRoom) {
+      setActiveRoomId(roomId);
+    } else {
+      const newPrivateRoom: ChatRoom = {
+        id: roomId,
+        name: `${target.name}`,
+        topic: `${target.name} ile Özel Sohbet`,
+        participants: [currentUser, target],
+        messages: [],
+        lastMessageAt: Date.now(),
+        type: 'private',
+        targetUserId: target.id
+      };
+      setRooms(prev => [...prev, newPrivateRoom]);
+      setActiveRoomId(roomId);
+    }
+  };
+
   const triggerBotResponse = async (botId: string, roomId: string) => {
     const targetRoom = rooms.find(r => r.id === roomId);
     if (!targetRoom) return;
@@ -140,11 +164,18 @@ const App: React.FC = () => {
     }));
 
     const currentActiveRoom = rooms.find(r => r.id === activeRoomId);
-    if (currentActiveRoom && currentActiveRoom.type === 'channel') {
-      const bots = currentActiveRoom.participants.filter(p => p.isAi);
-      if (bots.length > 0 && Math.random() > 0.4) {
-        const randomBot = bots[Math.floor(Math.random() * bots.length)];
-        setTimeout(() => triggerBotResponse(randomBot.id, activeRoomId), 1500);
+    if (currentActiveRoom) {
+      if (currentActiveRoom.type === 'channel') {
+        const bots = currentActiveRoom.participants.filter(p => p.isAi);
+        if (bots.length > 0 && Math.random() > 0.4) {
+          const randomBot = bots[Math.floor(Math.random() * bots.length)];
+          setTimeout(() => triggerBotResponse(randomBot.id, activeRoomId), 1500);
+        }
+      } else if (currentActiveRoom.type === 'private') {
+        const target = currentActiveRoom.participants.find(p => p.id === currentActiveRoom.targetUserId);
+        if (target && target.isAi) {
+          setTimeout(() => triggerBotResponse(target.id, activeRoomId), 1000);
+        }
       }
     }
   }, [activeRoomId, rooms, currentUser.id]);
@@ -194,13 +225,24 @@ const App: React.FC = () => {
             <button
               key={room.id}
               onClick={() => handleSwitchTab(room.id)}
-              className={`px-3 py-1 text-xs font-bold rounded-t-[3px] min-w-[90px] transition-all flex items-center justify-between gap-2 ${
+              className={`px-3 py-1 text-xs font-bold rounded-t-[3px] min-w-[90px] transition-all flex items-center justify-between gap-2 border-r border-blue-900 ${
                 activeRoomId === room.id 
                   ? 'bg-[#d4dce8] text-black border-t-2 border-l-2 border-white' 
                   : (room.hasAlert ? 'bg-red-600 text-white animate-pulse' : 'bg-[#b0b8c4] text-gray-700 hover:bg-[#c4ccd8]')
               }`}
             >
               <span className="truncate">{room.name}</span>
+              {room.type === 'private' && (
+                <X 
+                  size={10} 
+                  className="hover:text-red-500 cursor-pointer" 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setRooms(prev => prev.filter(r => r.id !== room.id));
+                    if (activeRoomId === room.id) setActiveRoomId(rooms[0].id);
+                  }}
+                />
+              )}
             </button>
           ))}
         </div>
@@ -217,7 +259,7 @@ const App: React.FC = () => {
             room={activeRoom} 
             onAddBot={(bot) => setRooms(prev => prev.map(r => r.id === activeRoomId ? { ...r, participants: [...r.participants, bot] } : r))} 
             onRemoveParticipant={(id) => setRooms(prev => prev.map(r => r.id === activeRoomId ? { ...r, participants: r.participants.filter(p => p.id !== id) } : r))}
-            onUserDoubleClick={(p) => console.log("Private chat with:", p.name)}
+            onUserDoubleClick={handleStartPrivateChat}
           />
         </div>
       </div>
