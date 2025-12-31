@@ -1,6 +1,7 @@
+
 import React, { useEffect, useRef, useState } from 'react';
 import { ChatRoom, Participant, LoadingState } from '../types';
-import { Bold, Italic, Underline, Palette, Loader2, Smile, ShieldBan, CheckCircle } from 'lucide-react';
+import { Bold, Italic, Underline, Palette, Loader2, Smile, ShieldBan, Send } from 'lucide-react';
 import EmojiPicker from './EmojiPicker';
 
 interface ChatAreaProps {
@@ -27,7 +28,7 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'auto' });
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
   useEffect(() => {
@@ -51,110 +52,124 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
   };
 
   return (
-    <div className="flex flex-col h-full bg-white relative font-mono text-sm">
+    <div className="flex flex-col h-full bg-[#f8fafc] relative font-sans text-sm">
       
-      {/* Block Banner (Only Private) */}
-      {room.type === 'private' && (
-          <div className="bg-[#f0f0f0] border-b border-gray-400 p-1 flex justify-between items-center">
-              <span className="text-[10px] text-gray-500 font-bold px-2">
-                  Özel Sohbet: {room.name}
-              </span>
+      {/* Soft Header Info */}
+      <div className="bg-white/80 backdrop-blur-md border-b border-gray-200 p-2 flex justify-between items-center z-10 shadow-sm">
+          <div className="flex flex-col">
+            <span className="text-[11px] font-black text-blue-900 uppercase tracking-wider">
+                {room.type === 'channel' ? room.name : `ÖZEL: ${room.name}`}
+            </span>
+            <span className="text-[9px] text-gray-400 font-bold truncate max-w-[200px]">
+                {room.topic}
+            </span>
+          </div>
+          {room.type === 'private' && (
               <button 
                 onClick={onToggleBlock}
-                className={`flex items-center gap-1 px-2 py-0.5 text-[10px] font-bold uppercase border border-gray-400 ${isBlocked ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-black hover:bg-gray-200'}`}
+                className={`flex items-center gap-1 px-3 py-1 rounded-full text-[9px] font-black uppercase transition-all ${isBlocked ? 'bg-red-500 text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}
               >
-                  {isBlocked ? <><ShieldBan size={12}/> Engeli Kaldır</> : <><ShieldBan size={12}/> Engelle</>}
+                  <ShieldBan size={10}/> {isBlocked ? 'ENGELİ KALDIR' : 'ENGELLE'}
               </button>
-          </div>
-      )}
+          )}
+      </div>
 
-      {/* Messages Log */}
-      <div className="flex-1 overflow-y-auto p-1 bg-white select-text cursor-text scrollbar-thin scrollbar-thumb-gray-400 scrollbar-track-gray-100">
-        {/* System Greeting / Topic */}
-        {room.type === 'channel' && (
-            <div className="text-[#008000] font-bold mb-1">
-                *** {room.name} kanalına giriş yaptınız.
-            </div>
-        )}
-        {room.type === 'channel' && (
-            <div className="text-[#008000] mb-2">
-                *** Konu: <span className="text-black font-normal">{room.topic}</span>
-            </div>
-        )}
-        {room.type === 'private' && (
-            <div className="text-[#008000] font-bold mb-2">
-                *** {room.name} ile özel sohbet başlatıldı.
-            </div>
-        )}
+      {/* Messages Log - Bubble Style */}
+      <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gradient-to-b from-[#f8fafc] to-[#f1f5f9] select-text scroll-smooth">
+        
+        {/* System Greeting */}
+        <div className="flex justify-center my-2">
+            <span className="bg-blue-50 text-blue-600 text-[9px] font-bold px-3 py-1 rounded-full border border-blue-100 uppercase tracking-tighter">
+                *** {room.name} oturumu aktif edildi
+            </span>
+        </div>
 
-        {room.messages.map((msg) => {
+        {room.messages.map((msg, index) => {
           const sender = room.participants.find(p => p.id === msg.senderId) || currentUser;
           const isMe = msg.senderId === currentUser.id;
-          const isBot = sender.isAi;
           
-          // Classic mIRC Colors
-          const nickColor = isMe ? "text-[#000080]" : (isBot ? "text-[#800000]" : "text-[#000000]");
-          const bracketColor = "text-gray-500";
-
           return (
-            <div key={msg.id} className="leading-[1.3] -ml-0.5 hover:bg-[#f0f0f0] px-1">
-               <span className="text-gray-400 text-[11px] mr-1 inline-block min-w-[35px]">[{formatTime(msg.timestamp)}]</span>
-               <span className={`${bracketColor}`}>&lt;</span>
-               <span 
-                 className={`font-bold cursor-pointer hover:underline ${nickColor}`}
-                 title={sender.persona}
-               >
-                 {sender.name}
-               </span>
-               <span className={`${bracketColor}`}>&gt;</span>
-               <span className="text-black ml-1 break-words">{msg.text}</span>
+            <div 
+              key={msg.id} 
+              className={`flex items-end gap-2 animate-message ${isMe ? 'flex-row-reverse' : 'flex-row'}`}
+              style={{ animationDelay: `${index * 0.05}s` }}
+            >
+               {/* Avatar */}
+               <div className="shrink-0 mb-1">
+                  <img 
+                    src={sender.avatar} 
+                    alt={sender.name}
+                    className={`w-8 h-8 rounded-2xl border-2 border-white shadow-sm object-cover ${sender.isAi ? 'ring-2 ring-pink-200' : 'ring-2 ring-blue-100'}`} 
+                  />
+               </div>
+
+               {/* Message Bubble */}
+               <div className={`flex flex-col max-w-[75%] ${isMe ? 'items-end' : 'items-start'}`}>
+                  <div className={`px-4 py-2.5 rounded-2xl shadow-sm relative ${
+                    isMe 
+                      ? 'bg-blue-600 text-white rounded-br-none' 
+                      : (sender.isAi ? 'bg-pink-50 text-pink-900 border border-pink-100 rounded-bl-none' : 'bg-white text-gray-800 border border-gray-100 rounded-bl-none')
+                  }`}>
+                    {!isMe && (
+                      <div className={`text-[10px] font-black mb-1 uppercase tracking-tighter ${sender.isAi ? 'text-pink-600' : 'text-blue-800'}`}>
+                        {sender.isAi ? `@${sender.name}` : sender.name}
+                      </div>
+                    )}
+                    <div className="text-[13px] leading-relaxed font-medium">
+                      {msg.text}
+                    </div>
+                  </div>
+                  <span className="text-[9px] text-gray-400 mt-1 font-bold">
+                    {formatTime(msg.timestamp)}
+                  </span>
+               </div>
             </div>
           );
         })}
 
         {loadingState.status === 'thinking' && (
-           <div className="leading-tight px-1 py-[1px] text-gray-500 italic flex items-center gap-1">
-             * {loadingState.participantId ? room.participants.find(p => p.id === loadingState.participantId)?.name : 'Bot'} yazıyor...
+           <div className="flex items-center gap-2 text-gray-400 animate-pulse ml-10">
+             <div className="flex gap-1">
+                <span className="w-1.5 h-1.5 bg-gray-300 rounded-full animate-bounce"></span>
+                <span className="w-1.5 h-1.5 bg-gray-300 rounded-full animate-bounce [animation-delay:0.2s]"></span>
+                <span className="w-1.5 h-1.5 bg-gray-300 rounded-full animate-bounce [animation-delay:0.4s]"></span>
+             </div>
+             <span className="text-[10px] font-bold uppercase tracking-widest">Yazıyor...</span>
            </div>
         )}
 
         {isBlocked && (
-            <div className="text-red-500 font-bold text-xs italic mt-2 px-1">
-                *** Bu kullanıcı engellendi. Mesajları görüntülenmeyecek.
+            <div className="bg-red-50 text-red-500 border border-red-100 p-3 rounded-xl text-center text-xs font-bold italic">
+                Bu kullanıcıyı engellediniz.
             </div>
         )}
 
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Input Area Wrapper */}
-      <div className="bg-[#d4dce8] p-1 border-t border-gray-400">
+      {/* Modernized Input Area */}
+      <div className="p-3 bg-white border-t border-gray-100">
         
-        {/* Formatting Toolbar */}
-        <div className="flex items-center gap-1 mb-1 px-1 relative">
-            <button className="w-6 h-5 bg-[#d4dce8] border border-white border-b-gray-500 border-r-gray-500 hover:bg-white active:border-t-gray-500 active:border-l-gray-500 flex items-center justify-center" title="Kalın"><Bold size={12} /></button>
-            <button className="w-6 h-5 bg-[#d4dce8] border border-white border-b-gray-500 border-r-gray-500 hover:bg-white active:border-t-gray-500 active:border-l-gray-500 flex items-center justify-center" title="İtalik"><Italic size={12} /></button>
-            <button className="w-6 h-5 bg-[#d4dce8] border border-white border-b-gray-500 border-r-gray-500 hover:bg-white active:border-t-gray-500 active:border-l-gray-500 flex items-center justify-center" title="Altı Çizili"><Underline size={12} /></button>
-            <button className="w-6 h-5 bg-[#d4dce8] border border-white border-b-gray-500 border-r-gray-500 hover:bg-white active:border-t-gray-500 active:border-l-gray-500 flex items-center justify-center text-purple-700" title="Renk"><Palette size={12} /></button>
-            <div className="w-px h-4 bg-gray-500 mx-1"></div>
+        {/* Quick Tools */}
+        <div className="flex items-center gap-2 mb-2 px-1 relative">
             <button 
                 type="button"
                 onClick={() => setShowEmojis(!showEmojis)}
-                className={`w-6 h-5 bg-[#d4dce8] border border-white border-b-gray-500 border-r-gray-500 hover:bg-white active:border-t-gray-500 active:border-l-gray-500 flex items-center justify-center ${showEmojis ? 'bg-white border-t-gray-500 border-l-gray-500' : ''}`}
+                className={`p-1.5 rounded-lg transition-colors ${showEmojis ? 'bg-yellow-50 text-yellow-600' : 'text-gray-400 hover:bg-gray-100'}`}
                 title="Emoji"
             >
-                <Smile size={12} className="text-yellow-600 fill-current" />
+                <Smile size={18} />
             </button>
             
-            {/* Quick Bot Pings (Only in Channels) */}
+            <div className="h-4 w-px bg-gray-200"></div>
+
             {room.type === 'channel' && (
-                <div className="flex-1 flex justify-end gap-2 overflow-x-auto items-center px-2">
-                    <span className="text-[10px] text-gray-600 font-bold hidden sm:inline">PING:</span>
+                <div className="flex gap-2 overflow-x-auto no-scrollbar items-center">
                     {room.participants.filter(p => p.isAi).map(bot => (
                         <button
                             key={bot.id}
                             onClick={() => onTriggerBot(bot.id)}
-                            className="text-[10px] text-[#000080] hover:text-red-600 hover:underline whitespace-nowrap"
+                            className="px-2 py-1 rounded-md text-[9px] font-black uppercase bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white transition-all whitespace-nowrap"
                             disabled={loadingState.status === 'thinking'}
                         >
                             @{bot.name}
@@ -165,7 +180,7 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
 
             {/* Emoji Picker Popup */}
             {showEmojis && (
-                <div className="absolute bottom-8 left-0 z-50">
+                <div className="absolute bottom-12 left-0 z-50">
                     <EmojiPicker 
                         onSelect={handleEmojiSelect} 
                         onClose={() => setShowEmojis(false)}
@@ -175,23 +190,23 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
         </div>
 
         {/* Text Input */}
-        <form onSubmit={handleSubmit} className="flex gap-1">
-          <input
-            type="text"
-            value={inputText}
-            onChange={(e) => setInputText(e.target.value)}
-            onKeyDown={(e) => e.key === 'Escape' && setShowEmojis(false)}
-            placeholder=""
-            autoFocus
-            className="flex-1 border-2 border-gray-500 border-r-white border-b-white bg-white px-2 py-1 text-sm outline-none font-mono shadow-[inset_1px_1px_2px_rgba(0,0,0,0.2)] disabled:bg-gray-100"
-            disabled={loadingState.status === 'thinking' || isBlocked}
-          />
+        <form onSubmit={handleSubmit} className="flex gap-2 items-center">
+          <div className="flex-1 relative">
+            <input
+              type="text"
+              value={inputText}
+              onChange={(e) => setInputText(e.target.value)}
+              placeholder="Bir şeyler yaz..."
+              className="w-full bg-gray-50 border border-gray-200 rounded-2xl px-4 py-3 text-sm outline-none focus:bg-white focus:border-blue-400 transition-all placeholder:text-gray-400"
+              disabled={loadingState.status === 'thinking' || isBlocked}
+            />
+          </div>
           <button
             type="submit"
             disabled={!inputText.trim() || loadingState.status === 'thinking' || isBlocked}
-            className="px-4 bg-[#d4dce8] border-2 border-white border-b-gray-600 border-r-gray-600 active:border-t-gray-600 active:border-l-gray-600 text-black font-bold text-xs uppercase disabled:opacity-50"
+            className="w-10 h-10 bg-blue-600 text-white rounded-full flex items-center justify-center hover:bg-blue-700 active:scale-95 transition-all shadow-md shadow-blue-200 disabled:opacity-50 disabled:shadow-none"
           >
-            {loadingState.status === 'thinking' ? <Loader2 size={16} className="animate-spin" /> : 'Gönder'}
+            {loadingState.status === 'thinking' ? <Loader2 size={18} className="animate-spin" /> : <Send size={18} />}
           </button>
         </form>
       </div>

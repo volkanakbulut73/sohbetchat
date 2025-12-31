@@ -3,26 +3,40 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Custom scrollbar for better retro feel */
+@keyframes message-slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-message {
+  animation: message-slide-up 0.3s ease-out forwards;
+}
+
+/* Custom scrollbar - Softer version */
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #f1f1f1;
+  background: #f8fafc;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #888;
-  border: 2px solid #f1f1f1;
+  background: #cbd5e1;
+  border-radius: 10px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #555;
+  background: #94a3b8;
 }
 
-/* Fix for smooth scrolling on landing page */
 html {
   scroll-behavior: smooth;
 }
@@ -31,15 +45,9 @@ body {
   margin: 0;
   padding: 0;
   overflow-x: hidden;
+  background-color: #f1f5f9;
 }
 
-/* Hide scrollbar for Chrome, Safari and Opera */
 .no-scrollbar::-webkit-scrollbar {
   display: none;
-}
-
-/* Hide scrollbar for IE, Edge and Firefox */
-.no-scrollbar {
-  -ms-overflow-style: none;  /* IE and Edge */
-  scrollbar-width: none;  /* Firefox */
 }

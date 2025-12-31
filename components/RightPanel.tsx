@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Participant, ChatRoom, AVATAR_COLORS } from '../types';
 import { Plus, X } from 'lucide-react';
@@ -48,14 +49,14 @@ export const RightPanel: React.FC<RightPanelProps> = ({
   });
 
   return (
-    <div className="w-32 md:w-56 flex flex-col h-full font-mono text-xs select-none bg-white border-l border-gray-400">
+    <div className="w-24 md:w-40 flex flex-col h-full font-mono text-[11px] select-none bg-white border-l border-gray-400 shrink-0">
         
         {/* Header Count */}
-        <div className="bg-[#f0f0f0] border-b border-gray-300 p-1 font-bold text-center text-gray-600 uppercase flex justify-between items-center px-2">
-            <span>USERS: {room.participants.length}</span>
+        <div className="bg-[#f0f0f0] border-b border-gray-300 p-1 font-bold text-center text-gray-600 uppercase flex justify-between items-center px-1.5">
+            <span className="truncate">U: {room.participants.length}</span>
             <button 
                 onClick={() => setIsAdding(!isAdding)} 
-                className="text-blue-800 hover:text-red-600 font-bold"
+                className="text-blue-800 hover:text-red-600 font-bold px-0.5"
                 title="Bot Ekle"
             >
                 [+]
@@ -64,19 +65,19 @@ export const RightPanel: React.FC<RightPanelProps> = ({
 
         {/* Add Bot Form (Overlay) */}
         {isAdding && (
-            <div className="absolute top-8 right-2 w-48 bg-[#d4dce8] border-2 border-white shadow-[4px_4px_5px_rgba(0,0,0,0.3)] p-2 z-20 outline outline-1 outline-gray-500">
+            <div className="absolute top-8 right-1 w-40 bg-[#d4dce8] border-2 border-white shadow-[4px_4px_5px_rgba(0,0,0,0.3)] p-2 z-20 outline outline-1 outline-gray-500">
                 <form onSubmit={handleAddSubmit} className="space-y-2">
-                    <div className="text-[10px] font-bold text-[#000080] mb-1">YENİ BOT EKLE</div>
+                    <div className="text-[9px] font-bold text-[#000080] mb-1 uppercase">BOT EKLE</div>
                     <input 
-                        className="w-full border border-gray-500 p-1 h-6 text-xs" 
+                        className="w-full border border-gray-500 p-1 h-6 text-[10px]" 
                         placeholder="Bot Adı"
                         autoFocus
                         value={newBotName}
                         onChange={e => setNewBotName(e.target.value)}
                     />
                     <div className="flex gap-1">
-                        <button type="submit" className="flex-1 bg-white border border-gray-500 text-xs font-bold hover:bg-blue-100">OK</button>
-                        <button type="button" onClick={() => setIsAdding(false)} className="flex-1 bg-white border border-gray-500 text-xs font-bold hover:bg-red-100">IPTAL</button>
+                        <button type="submit" className="flex-1 bg-white border border-gray-500 text-[10px] font-bold hover:bg-blue-100">OK</button>
+                        <button type="button" onClick={() => setIsAdding(false)} className="flex-1 bg-white border border-gray-500 text-[10px] font-bold hover:bg-red-100">X</button>
                     </div>
                 </form>
             </div>
@@ -100,12 +101,12 @@ export const RightPanel: React.FC<RightPanelProps> = ({
                 return (
                     <div 
                         key={p.id} 
-                        className="group flex items-center px-2 py-[1px] hover:bg-[#000080] hover:text-white cursor-default"
+                        className="group flex items-center px-1.5 py-[0.5px] hover:bg-[#000080] hover:text-white cursor-default"
                         title="Özel sohbet için çift tıklayın"
                         onDoubleClick={() => onUserDoubleClick(p)}
                     >
                         {/* Always visible View */}
-                        <span className={`w-4 font-bold ${colorClass} group-hover:text-white`}>
+                        <span className={`w-3 font-bold ${colorClass} group-hover:text-white`}>
                             {prefix}
                         </span>
                         <span className={`truncate font-bold ${colorClass} group-hover:text-white flex-1`}>
@@ -116,7 +117,7 @@ export const RightPanel: React.FC<RightPanelProps> = ({
                         {!p.isAi && p.id !== 'user-1' && (
                             <button 
                                 onClick={(e) => { e.stopPropagation(); onRemoveParticipant(p.id); }}
-                                className="hidden group-hover:block text-white hover:text-red-300 font-bold px-1"
+                                className="hidden group-hover:block text-white hover:text-red-300 font-bold px-0.5"
                             >
                                 <X size={10} />
                             </button>
