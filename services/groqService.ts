@@ -5,20 +5,21 @@ import { GoogleGenAI } from "@google/genai";
 
 /**
  * AI Configuration using Google GenAI SDK
+ * Using gemini-3-flash-preview for high speed and performance
  */
-const MODEL = "gemini-3-pro-preview";
+const MODEL = "gemini-3-flash-preview";
 
 /**
  * Shared function to call Gemini API
  */
 async function callGeminiApi(contents: string, systemInstruction?: string): Promise<string> {
     try {
-        // Create a new instance right before use to ensure up-to-date API key
-        // Following guidelines: always use { apiKey: process.env.API_KEY }
+        // ALWAYS create a new instance right before making an API call 
+        // to ensure it uses the most up-to-date API key from the environment.
         const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+        
         const response = await ai.models.generateContent({
             model: MODEL,
-            // Following guidelines: passing the text contents directly as a string
             contents: contents,
             config: {
                 systemInstruction: systemInstruction,
@@ -26,11 +27,11 @@ async function callGeminiApi(contents: string, systemInstruction?: string): Prom
             },
         });
 
-        // Following guidelines: using the .text property (getter) to access output
+        // Use the .text property (getter) to access output
         return response.text || "...";
     } catch (error) {
         console.error("Gemini API Error:", error);
-        return "... (Bağlantı hatası)";
+        return "... (Bağlantı hatası: API anahtarı veya ağ sorunu)";
     }
 }
 
@@ -49,7 +50,7 @@ export const generateBotResponse = async (
         .map(p => `- ${p.name} (${p.isAi ? 'Yapay Zeka' : 'İnsan'}): ${p.persona}`)
         .join('\n');
 
-    const recentMessages = chatHistory.slice(-15); // Context of last 15 messages
+    const recentMessages = chatHistory.slice(-15);
     const conversationLog = recentMessages.map(msg => {
         const sender = allParticipants.find(p => p.id === msg.senderId);
         const senderName = sender ? sender.name : 'Bilinmeyen';
@@ -83,12 +84,11 @@ Kurallar:
 };
 
 /**
- * Legacy Service Object (used by useChatCore.ts / mIRC mode)
+ * Legacy Service Object
  */
 export const groqService = {
   async getChatResponse(prompt: string, sender: string): Promise<string> {
     try {
-      // Dinamik bot eğitimi/kişiliği veritabanından çekiliyor
       const botPersonality = await storageService.getBotConfig();
 
       const systemInstruction = `${botPersonality}

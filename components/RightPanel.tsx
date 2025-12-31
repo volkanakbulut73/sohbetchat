@@ -49,14 +49,14 @@ export const RightPanel: React.FC<RightPanelProps> = ({
   });
 
   return (
-    <div className="w-24 md:w-28 flex flex-col h-full font-mono text-[10px] select-none bg-white border-l border-gray-100 shrink-0">
+    <div className="w-20 flex flex-col h-full font-mono text-[10px] select-none bg-white border-l border-gray-100 shrink-0">
         
         {/* Header Count */}
-        <div className="bg-[#f8fafc] border-b border-gray-100 p-1.5 font-bold text-center text-gray-400 uppercase flex justify-between items-center px-1.5">
-            <span className="truncate">U: {room.participants.length}</span>
+        <div className="bg-[#f8fafc] border-b border-gray-100 p-1.5 font-bold text-center text-gray-400 uppercase flex justify-between items-center px-1">
+            <span className="truncate">U:{room.participants.length}</span>
             <button 
                 onClick={() => setIsAdding(!isAdding)} 
-                className="text-blue-400 hover:text-blue-700 font-bold px-0.5"
+                className="text-blue-400 hover:text-blue-700 font-bold"
                 title="Bot Ekle"
             >
                 [+]
@@ -101,8 +101,8 @@ export const RightPanel: React.FC<RightPanelProps> = ({
                 return (
                     <div 
                         key={p.id} 
-                        className="group flex items-center px-1.5 py-0.5 hover:bg-blue-50 cursor-pointer rounded-md mx-1 transition-colors"
-                        title="Özel sohbet için çift tıklayın"
+                        className="group flex items-center px-1 py-0.5 hover:bg-blue-50 cursor-pointer rounded transition-colors"
+                        title={p.name}
                         onDoubleClick={() => onUserDoubleClick(p)}
                     >
                         <span className={`w-2.5 font-black text-[9px] shrink-0 ${colorClass}`}>
@@ -116,7 +116,7 @@ export const RightPanel: React.FC<RightPanelProps> = ({
                         {!p.isAi && p.id !== 'user-1' && (
                             <button 
                                 onClick={(e) => { e.stopPropagation(); onRemoveParticipant(p.id); }}
-                                className="hidden group-hover:block text-red-400 hover:text-red-600 font-bold px-0.5"
+                                className="hidden group-hover:block text-red-400 hover:text-red-600 font-bold"
                             >
                                 <X size={9} />
                             </button>
