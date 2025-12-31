@@ -9,8 +9,9 @@ import {
   Globe,
   Lock,
   MessageSquare,
-  // Added X to imports to resolve the "Cannot find name 'X'" error
-  X
+  X,
+  ChevronRight,
+  ShieldCheck
 } from 'lucide-react';
 import { storageService } from '../services/storageService';
 
@@ -118,115 +119,141 @@ const LandingPage: React.FC<LandingPageProps> = ({ onEnter, onRegisterClick, onA
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col font-sans">
-      {/* Header / Navbar */}
-      <nav className="bg-white border-b border-gray-200 px-6 py-4 flex justify-between items-center shadow-sm">
+    <div className="min-h-screen bg-[#0b0f14] flex flex-col font-mono text-white selection:bg-[#00ff99] selection:text-black">
+      {/* Upper Status Bar */}
+      <div className="p-4 flex justify-between items-center text-[10px] opacity-50 font-bold uppercase tracking-widest border-b border-white/5">
         <div className="flex items-center gap-2">
-          <Shield className="text-blue-700" size={24} />
-          <span className="font-black text-xl text-slate-800 tracking-tighter">WORKIGOM<span className="text-blue-600">CHAT</span></span>
+           <Globe size={12} />
+           <span>https://workigomchat.online</span>
         </div>
         <div className="flex gap-4">
-          <button onClick={onAdminClick} className="text-[10px] font-bold text-gray-400 hover:text-blue-600 uppercase tracking-widest">Yönetici</button>
+          <button onClick={onAdminClick} className="hover:text-[#00ff99] transition-colors">Yönetici Girişi</button>
         </div>
-      </nav>
+      </div>
 
-      {/* Main Hero Section */}
-      <main className="flex-1 flex flex-col items-center justify-center p-6 text-center max-w-4xl mx-auto space-y-8">
-        <div className="space-y-4">
-          <h2 className="text-4xl md:text-5xl font-black text-slate-900 leading-tight">
-            Güvenli ve Profesyonel <br/>
-            <span className="text-blue-600 underline decoration-blue-200 underline-offset-4">İletişim Portalı</span>
-          </h2>
-          <p className="text-gray-500 text-sm md:text-base font-medium max-w-2xl mx-auto">
-            Workigom Secure Network üzerinden gerçek ve doğrulanmış kullanıcılarla, 
-            klasik mIRC ruhunu modern bir arayüzle deneyimleyin.
-          </p>
+      {/* Hero Section */}
+      <main className="flex-1 flex flex-col items-center justify-center p-6 text-center space-y-12">
+        
+        {/* System Status Pill */}
+        <div className="inline-flex items-center gap-2 px-4 py-2 border border-[#00ff99]/40 rounded-sm bg-[#00ff99]/5">
+            <div className="w-2 h-2 rounded-full bg-[#00ff99] animate-pulse shadow-[0_0_8px_#00ff99]"></div>
+            <span className="text-[10px] font-black text-[#00ff99] tracking-[0.2em] uppercase">
+                SİSTEM DURUMU: GÜVENLİ ERİŞİM AKTİF
+            </span>
         </div>
 
-        <div className="flex flex-col sm:flex-row gap-4 w-full max-w-md">
-          <button 
-            onClick={() => setShowLoginForm(true)}
-            className="flex-1 bg-blue-600 text-white px-8 py-4 rounded-xl font-bold hover:bg-blue-700 transition-all shadow-lg shadow-blue-200 flex items-center justify-center gap-2"
-          >
-            <LogIn size={18} /> Giriş Yap
-          </button>
-          <button 
-            onClick={onRegisterClick}
-            className="flex-1 bg-white text-blue-600 border-2 border-blue-100 px-8 py-4 rounded-xl font-bold hover:border-blue-600 transition-all flex items-center justify-center gap-2"
-          >
-            <UserPlus size={18} /> Kayıt Ol
-          </button>
+        {/* Headline */}
+        <div className="space-y-2">
+            <h1 className="text-5xl md:text-7xl font-black italic tracking-tighter text-white uppercase leading-none">
+                GERÇEK İNSANLARLA,
+            </h1>
+            <h2 className="text-5xl md:text-7xl font-black italic tracking-tighter text-[#00ff99] uppercase leading-none drop-shadow-[0_0_25px_rgba(0,255,153,0.5)]">
+                GÜVENLİ SOHBET
+            </h2>
         </div>
 
-        {/* Feature grid */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-12">
-          <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm text-left space-y-2">
-            <div className="w-10 h-10 bg-blue-50 text-blue-600 rounded-lg flex items-center justify-center"><Lock size={20}/></div>
-            <h4 className="font-bold text-slate-800">Uçtan Uca Güvenli</h4>
-            <p className="text-xs text-gray-400">Tüm kullanıcılar resmi belgelerle doğrulanır.</p>
-          </div>
-          <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm text-left space-y-2">
-            <div className="w-10 h-10 bg-pink-50 text-pink-600 rounded-lg flex items-center justify-center"><Globe size={20}/></div>
-            <h4 className="font-bold text-slate-800">Yapay Zeka Botları</h4>
-            <p className="text-xs text-gray-400">Lara ve Sokrates ile kesintisiz etkileşim.</p>
-          </div>
-          <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm text-left space-y-2">
-            <div className="w-10 h-10 bg-green-50 text-green-600 rounded-lg flex items-center justify-center"><MessageSquare size={20}/></div>
-            <h4 className="font-bold text-slate-800">Klasik Ruh</h4>
-            <p className="text-xs text-gray-400">mIRC komutları ve jargonuna tam uyum.</p>
-          </div>
+        {/* Description */}
+        <div className="max-w-2xl flex gap-6 items-start text-left">
+            <div className="w-1 h-20 bg-[#00ff99] shrink-0 shadow-[0_0_10px_rgba(0,255,153,0.3)]"></div>
+            <p className="text-gray-400 text-lg md:text-xl font-medium leading-relaxed italic">
+                Sabıka kaydı temiz, çalışan ve kimliği doğrulanmış kişilerle <br/>
+                huzurlu, seviyeli ve <span className="text-white font-bold">gerçek sohbet ortamı.</span>
+            </p>
+        </div>
+
+        {/* CTAs */}
+        <div className="flex flex-col sm:flex-row gap-6 w-full max-w-xl pt-4">
+            <button 
+                onClick={() => setShowLoginForm(true)}
+                className="group relative flex-1 bg-[#00ff99] text-black h-16 flex items-center justify-center gap-3 font-black text-sm uppercase tracking-widest hover:bg-white transition-all overflow-hidden"
+            >
+                <div className="absolute inset-0 bg-white translate-y-full group-hover:translate-y-0 transition-transform duration-300"></div>
+                <LogIn size={20} className="relative z-10" />
+                <span className="relative z-10">GİRİŞ YAP</span>
+            </button>
+            <button 
+                onClick={onRegisterClick}
+                className="flex-1 border-2 border-[#00ff99] text-[#00ff99] h-16 flex items-center justify-center gap-3 font-black text-sm uppercase tracking-widest hover:bg-[#00ff99]/10 transition-all"
+            >
+                <UserPlus size={20} />
+                <span>BAŞVUR VE KATIL</span>
+            </button>
         </div>
       </main>
 
-      <footer className="p-6 text-center text-gray-400 text-[10px] font-bold uppercase tracking-widest border-t border-gray-100">
-        Workigom Network System &copy; 2024 - Tüm Hakları Saklıdır
+      {/* Footer Info Lines */}
+      <footer className="p-8 grid grid-cols-1 md:grid-cols-3 gap-8 border-t border-white/5 bg-black/20">
+        <div className="space-y-2">
+            <h4 className="text-[11px] font-black text-[#00ff99] uppercase tracking-widest flex items-center gap-2">
+                <ShieldCheck size={14}/> GERÇEK KİŞİLER
+            </h4>
+            <p className="text-[10px] text-gray-500 font-bold uppercase leading-relaxed">
+                Kimlik doğrulama zorunlu. Sahte hesaplara geçit yok. Aktif moderasyon.
+            </p>
+        </div>
+        <div className="space-y-2">
+            <h4 className="text-[11px] font-black text-[#00ff99] uppercase tracking-widest flex items-center gap-2">
+                <Lock size={14}/> SABIKA KAYDI KONTROLÜ
+            </h4>
+            <p className="text-[10px] text-gray-500 font-bold uppercase leading-relaxed">
+                Temiz sicil olmayan kabul edilmez. Topluluk güvenliği esastır.
+            </p>
+        </div>
+        <div className="space-y-2">
+            <h4 className="text-[11px] font-black text-[#00ff99] uppercase tracking-widest flex items-center gap-2">
+                <MessageSquare size={14}/> SOHBET KÜLTÜRÜ
+            </h4>
+            <p className="text-[10px] text-gray-400 font-bold uppercase leading-relaxed">
+                Workigom Network System © 2024 - Tüm Hakları Saklıdır
+            </p>
+        </div>
       </footer>
 
       {/* Login Modal */}
       {showLoginForm && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-md">
-          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden flex flex-col animate-in fade-in zoom-in duration-200">
-            <div className="bg-blue-600 text-white px-6 py-5 flex justify-between items-center">
-              <span className="font-bold flex items-center gap-2">
-                <Shield size={18} /> Kullanıcı Girişi
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/95 p-4 backdrop-blur-sm">
+          <div className="bg-[#1a1f26] border border-[#00ff99]/30 w-full max-w-sm overflow-hidden flex flex-col shadow-[0_0_50px_rgba(0,0,0,0.5)]">
+            <div className="bg-black/50 text-white px-6 py-4 flex justify-between items-center border-b border-white/5">
+              <span className="font-black text-xs flex items-center gap-2 uppercase tracking-widest">
+                <Shield size={16} className="text-[#00ff99]" /> SİSTEM GİRİŞİ
               </span>
-              <button onClick={() => setShowLoginForm(false)} className="hover:bg-blue-500 rounded-full p-1">
+              <button onClick={() => setShowLoginForm(false)} className="hover:text-red-500 transition-colors">
                 <X size={20} />
               </button>
             </div>
 
-            <form onSubmit={handleLogin} className="p-8 space-y-5">
+            <form onSubmit={handleLogin} className="p-8 space-y-6">
               {error && (
-                <div className="bg-red-50 border border-red-100 p-3 rounded-xl text-red-600 text-xs font-bold text-center">
+                <div className="bg-red-900/20 border border-red-500/50 p-3 text-red-400 text-[10px] font-black uppercase text-center">
                   HATA: {error}
                 </div>
               )}
               {infoMessage && (
-                <div className="bg-blue-50 border border-blue-100 p-3 rounded-xl text-blue-600 text-xs font-bold text-center">
+                <div className="bg-blue-900/20 border border-blue-500/50 p-3 text-blue-400 text-[10px] font-black uppercase text-center">
                   BİLGİ: {infoMessage}
                 </div>
               )}
 
-              <div className="space-y-1">
-                <label className="text-[10px] font-black text-gray-400 uppercase ml-1">E-posta:</label>
+              <div className="space-y-2">
+                <label className="text-[9px] font-black text-gray-500 uppercase tracking-widest ml-1">E-POSTA ADRESİ</label>
                 <input 
                   type="email" 
                   required
                   value={loginEmail}
                   onChange={e => setLoginEmail(e.target.value)}
-                  className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 text-sm outline-none focus:border-blue-400 transition-all"
+                  className="w-full bg-black/50 border border-white/10 p-4 text-xs text-white outline-none focus:border-[#00ff99] transition-all"
                   placeholder="isim@sirket.com"
                 />
               </div>
 
-              <div className="space-y-1">
-                <label className="text-[10px] font-black text-gray-400 uppercase ml-1">Şifre:</label>
+              <div className="space-y-2">
+                <label className="text-[9px] font-black text-gray-500 uppercase tracking-widest ml-1">ERİŞİM ŞİFRESİ</label>
                 <input 
                   type="password" 
                   required
                   value={loginPass}
                   onChange={e => setLoginPass(e.target.value)}
-                  className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 text-sm outline-none focus:border-blue-400 transition-all"
+                  className="w-full bg-black/50 border border-white/10 p-4 text-xs text-white outline-none focus:border-[#00ff99] transition-all"
                   placeholder="********"
                 />
               </div>
@@ -234,17 +261,17 @@ const LandingPage: React.FC<LandingPageProps> = ({ onEnter, onRegisterClick, onA
               <button 
                 type="submit"
                 disabled={loading}
-                className="w-full bg-blue-600 text-white py-4 rounded-xl font-bold hover:bg-blue-700 transition-all disabled:opacity-50"
+                className="w-full bg-[#00ff99] text-black py-4 font-black text-xs uppercase hover:bg-white transition-all disabled:opacity-50 tracking-widest"
               >
-                {loading ? <Loader2 size={20} className="animate-spin mx-auto" /> : 'GİRİŞ YAP'}
+                {loading ? <Loader2 size={20} className="animate-spin mx-auto" /> : 'SİSTEME BAĞLAN'}
               </button>
 
               <div className="relative py-2">
-                <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-gray-100"></div></div>
-                <div className="relative flex justify-center text-[9px] font-bold"><span className="bg-white px-2 text-gray-300 uppercase">Veya Sosyal Hesapla</span></div>
+                <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-white/5"></div></div>
+                <div className="relative flex justify-center text-[8px] font-black"><span className="bg-[#1a1f26] px-3 text-gray-600 uppercase tracking-tighter">Veya Sosyal Kimlik</span></div>
               </div>
 
-              <div id="google-button-container" className="flex justify-center"></div>
+              <div id="google-button-container" className="flex justify-center grayscale hover:grayscale-0 transition-all"></div>
             </form>
           </div>
         </div>

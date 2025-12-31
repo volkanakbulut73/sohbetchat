@@ -49,11 +49,11 @@ export const RightPanel: React.FC<RightPanelProps> = ({
   });
 
   return (
-    <div className="w-24 md:w-32 flex flex-col h-full font-mono text-[10px] md:text-[11px] select-none bg-white border-l border-gray-100 shrink-0">
+    <div className="w-24 md:w-28 flex flex-col h-full font-mono text-[10px] select-none bg-white border-l border-gray-100 shrink-0">
         
         {/* Header Count */}
         <div className="bg-[#f8fafc] border-b border-gray-100 p-1.5 font-bold text-center text-gray-400 uppercase flex justify-between items-center px-1.5">
-            <span className="truncate">USER: {room.participants.length}</span>
+            <span className="truncate">U: {room.participants.length}</span>
             <button 
                 onClick={() => setIsAdding(!isAdding)} 
                 className="text-blue-400 hover:text-blue-700 font-bold px-0.5"
@@ -65,19 +65,19 @@ export const RightPanel: React.FC<RightPanelProps> = ({
 
         {/* Add Bot Form (Overlay) */}
         {isAdding && (
-            <div className="absolute top-10 right-1 w-36 bg-white border border-gray-200 shadow-xl rounded-xl p-3 z-20">
+            <div className="absolute top-10 right-1 w-32 bg-white border border-gray-200 shadow-xl rounded-xl p-2 z-20">
                 <form onSubmit={handleAddSubmit} className="space-y-2">
-                    <div className="text-[9px] font-black text-gray-400 mb-1 uppercase tracking-widest">Bot Ekle</div>
+                    <div className="text-[8px] font-black text-gray-400 mb-1 uppercase tracking-widest">Bot Ekle</div>
                     <input 
-                        className="w-full border border-gray-100 bg-gray-50 rounded-lg p-1.5 h-7 text-[10px] outline-none focus:border-blue-400" 
-                        placeholder="Bot Adı"
+                        className="w-full border border-gray-100 bg-gray-50 rounded-lg p-1.5 h-7 text-[9px] outline-none focus:border-blue-400" 
+                        placeholder="Ad..."
                         autoFocus
                         value={newBotName}
                         onChange={e => setNewBotName(e.target.value)}
                     />
                     <div className="flex gap-1">
-                        <button type="submit" className="flex-1 bg-blue-600 text-white rounded-lg text-[9px] font-bold p-1 hover:bg-blue-700">EKLE</button>
-                        <button type="button" onClick={() => setIsAdding(false)} className="flex-1 bg-gray-100 text-gray-400 rounded-lg text-[9px] font-bold p-1">X</button>
+                        <button type="submit" className="flex-1 bg-blue-600 text-white rounded-lg text-[8px] font-bold p-1 hover:bg-blue-700">EKLE</button>
+                        <button type="button" onClick={() => setIsAdding(false)} className="flex-1 bg-gray-100 text-gray-400 rounded-lg text-[8px] font-bold p-1 text-center">X</button>
                     </div>
                 </form>
             </div>
@@ -101,11 +101,11 @@ export const RightPanel: React.FC<RightPanelProps> = ({
                 return (
                     <div 
                         key={p.id} 
-                        className="group flex items-center px-2 py-1 hover:bg-blue-50 cursor-pointer rounded-lg mx-1 transition-colors"
+                        className="group flex items-center px-1.5 py-0.5 hover:bg-blue-50 cursor-pointer rounded-md mx-1 transition-colors"
                         title="Özel sohbet için çift tıklayın"
                         onDoubleClick={() => onUserDoubleClick(p)}
                     >
-                        <span className={`w-3 font-black text-[9px] shrink-0 ${colorClass}`}>
+                        <span className={`w-2.5 font-black text-[9px] shrink-0 ${colorClass}`}>
                             {prefix}
                         </span>
                         <span className={`truncate font-bold ${colorClass} flex-1`}>
@@ -118,7 +118,7 @@ export const RightPanel: React.FC<RightPanelProps> = ({
                                 onClick={(e) => { e.stopPropagation(); onRemoveParticipant(p.id); }}
                                 className="hidden group-hover:block text-red-400 hover:text-red-600 font-bold px-0.5"
                             >
-                                <X size={10} />
+                                <X size={9} />
                             </button>
                         )}
                     </div>
