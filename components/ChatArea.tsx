@@ -42,9 +42,8 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
       {/* Message History */}
       <div className="flex-1 overflow-y-auto p-2 space-y-0.5 select-text bg-white">
         
-        {/* System Message - Pink Header Style */}
-        {/* Fix: Escaped <SohbetChe> characters to prevent the JSX compiler from treating it as a component name */}
-        <div className="bg-[#800080] text-white p-1 font-bold text-[13px] mb-2">
+        {/* System Message - Pink Header Style from image */}
+        <div className="bg-[#800080] text-white p-1 font-bold text-[13px] mb-2 shadow-sm">
           [12:34] {'<SohbetChe>'} Zekanizi Geliştirmek Ve eğlenmek için #Oyun Radyomuzu Dinlemek için #Radyo ircd Komutları Hakkında Yardim almak için #heLp Sunucu Hakkinda bilgi Almak için #operHelp Kanalini Kullanabilirsiniz...
         </div>
 
@@ -53,18 +52,27 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
           const isBot = room.participants.find(p => p.id === msg.senderId)?.isAi;
           const time = formatTime(msg.timestamp);
 
-          // Giriş/Çıkış simülasyonu
+          // Giriş/Çıkış simülasyonu - Resimdeki yeşil/mavi tonları
           if (idx === 0) {
              return (
-               <div key={idx} className="text-[#008080] font-bold text-[13px]">
+               <div key={idx} className="text-[#008080] font-bold text-[13px] leading-tight">
                  [{time}] * Giriş: {sender.name} (user@host.net) (Türkiye'nin bir numaralı sohbet sunucusu)
                </div>
              )
           }
 
+          // Çıkış mesajı simülasyonu (rastgele bazen gösterelim)
+          if (idx % 7 === 0 && idx !== 0) {
+            return (
+              <div key={`out-${idx}`} className="text-[#000080] font-bold text-[13px] leading-tight">
+                [{time}] • Çıkış: misafir (MobilSche@Web.IP) (Türkiye'nin bir numaralı sohbet sunucusu)
+              </div>
+            )
+          }
+
           return (
-            <div key={idx} className="flex gap-1.5 items-start">
-              <span className="font-bold text-black shrink-0">[{time}]</span>
+            <div key={idx} className="flex gap-1 items-start leading-tight py-0.5">
+              <span className="font-bold text-black shrink-0 whitespace-nowrap">[{time}]</span>
               <span className={`font-bold shrink-0 ${isBot ? 'text-[#ff00ff]' : 'text-black'}`}>
                 &lt;{sender.name}&gt;
               </span>
@@ -75,7 +83,6 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
 
         {loadingState.status === 'thinking' && (
           <div className="text-gray-400 font-bold italic text-[11px] ml-14">
-            {/* Displaying participant name instead of ID for a more human feel */}
             * {room.participants.find(p => p.id === loadingState.participantId)?.name || 'Birisi'} yazıyor...
           </div>
         )}
@@ -90,18 +97,22 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
               type="text" 
               value={inputText}
               onChange={(e) => setInputText(e.target.value)}
-              className="w-full h-full outline-none text-[13px] bg-transparent font-medium"
+              className="w-full h-full outline-none text-[13px] bg-transparent font-medium mirc-font"
               placeholder=""
               autoFocus
             />
           </form>
         </div>
-        <button onClick={() => setShowEmojis(!showEmojis)} className="w-6 h-6 flex items-center justify-center hover:bg-gray-200 mirc-border">
+        <button 
+          onClick={() => setShowEmojis(!showEmojis)} 
+          className="w-6 h-6 flex items-center justify-center hover:bg-gray-200 mirc-border transition-colors active:mirc-inset"
+          title="Emoji Seç"
+        >
           <Smile size={14} className="text-yellow-600" />
         </button>
         {showEmojis && (
           <div className="absolute bottom-10 right-2 z-50">
-            <EmojiPicker onSelect={(e) => setInputText(p => p + e)} onClose={() => setShowEmojis(false)} />
+            <EmojiPicker onSelect={(e) => { setInputText(p => p + e); setShowEmojis(false); }} onClose={() => setShowEmojis(false)} />
           </div>
         )}
       </div>

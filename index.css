@@ -14,12 +14,13 @@
 .mirc-font {
   font-family: "Fixedsys", "Courier New", monospace;
   font-size: 13px;
+  letter-spacing: -0.5px;
 }
 
 .mirc-text {
   font-family: Arial, Helvetica, sans-serif;
   font-size: 13px;
-  line-height: 1.4;
+  line-height: 1.2;
 }
 
 /* Klasik Windows Kaydırma Çubuğu */
@@ -51,4 +52,14 @@
 .mirc-inset {
   border: 2px solid;
   border-color: #808080 #ffffff #ffffff #808080;
+}
+
+.active\:mirc-inset:active {
+  border-color: #808080 #ffffff #ffffff #808080 !important;
+}
+
+/* Tab Animation */
+.mirc-tab-active {
+  @apply bg-[#000080] text-white;
+  box-shadow: inset 1px 1px 0px rgba(255,255,255,0.3);
 }
