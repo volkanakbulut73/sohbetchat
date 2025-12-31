@@ -14,16 +14,19 @@ const MODEL = "gemini-3-pro-preview";
 async function callGeminiApi(contents: string, systemInstruction?: string): Promise<string> {
     try {
         // Create a new instance right before use to ensure up-to-date API key
+        // Following guidelines: always use { apiKey: process.env.API_KEY }
         const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
         const response = await ai.models.generateContent({
             model: MODEL,
-            contents: [{ parts: [{ text: contents }] }],
+            // Following guidelines: passing the text contents directly as a string
+            contents: contents,
             config: {
                 systemInstruction: systemInstruction,
                 temperature: 0.8,
             },
         });
 
+        // Following guidelines: using the .text property (getter) to access output
         return response.text || "...";
     } catch (error) {
         console.error("Gemini API Error:", error);
