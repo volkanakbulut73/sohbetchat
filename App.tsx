@@ -1,14 +1,14 @@
 
-import React, { useState, useCallback, useMemo, useEffect } from 'react';
+import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { ChatArea } from './components/ChatArea';
 import { RightPanel } from './components/RightPanel';
 import LandingPage from './components/LandingPage';
 import RegistrationForm from './components/RegistrationForm';
 import AdminDashboard from './components/AdminDashboard';
-import { ChatRoom, Message, Participant, LoadingState, INITIAL_ROOM, INITIAL_USER, PREMADE_BOTS, UserRegistration } from './types';
+import { ChatRoom, Message, Participant, LoadingState, INITIAL_ROOM, INITIAL_USER, PREMADE_BOTS, UserRegistration, MessageType } from './types';
 import { generateBotResponse } from './services/groqService';
 import { storageService } from './services/storageService';
-import { Settings, Power, Shield, Save, X, Radio, List, UserCheck, MessageSquare, Key, HelpCircle, HardDrive } from 'lucide-react';
+import { Power, Shield, List, Radio, UserCheck, MessageSquare } from 'lucide-react';
 
 const App: React.FC = () => {
   const [currentView, setCurrentView] = useState<'LANDING' | 'CHAT' | 'REGISTER' | 'ADMIN'>('LANDING');
@@ -16,10 +16,11 @@ const App: React.FC = () => {
   const [rooms, setRooms] = useState<ChatRoom[]>([{ ...INITIAL_ROOM }]);
   const [activeRoomId, setActiveRoomId] = useState<string>(INITIAL_ROOM.id);
   const [loadingState, setLoadingState] = useState<LoadingState>({ status: 'idle' });
-  
-  const [showSettingsModal, setShowSettingsModal] = useState(false);
-  const [tempNick, setTempNick] = useState(currentUser.name);
+  const lastSyncTimeRef = useRef<number>(0);
 
+  const activeRoom = useMemo(() => rooms.find(r => r.id === activeRoomId) || rooms[0], [rooms, activeRoomId]);
+
+  // Katılımcıları ve Onaylı Kullanıcıları Senkronize Et
   const syncRealUsers = useCallback(async () => {
     if (!storageService.isConfigured()) return;
     try {
@@ -42,13 +43,50 @@ const App: React.FC = () => {
     } catch (err) { console.error("User sync error:", err); }
   }, [currentUser]);
 
+  // Mesajları Senkronize Et (Polling)
+  const syncMessages = useCallback(async () => {
+    if (!storageService.isConfigured() || currentView !== 'CHAT') return;
+    try {
+      const dbMessages = await storageService.getMessagesByChannel(activeRoom.name);
+      
+      // Sadece yeni mesajları ekle (yerel state'i güncelle)
+      setRooms(prevRooms => prevRooms.map(room => {
+        if (room.name !== activeRoom.name) return room;
+        
+        // Mevcut mesaj ID'lerini topla
+        const existingIds = new Set(room.messages.map(m => m.id));
+        const newMessages = dbMessages.filter(m => !existingIds.has(m.id)).map(m => {
+          // DB'den gelen mesajları Participant formatına uygun eşleştir
+          const senderPart = room.participants.find(p => p.name === m.sender);
+          return {
+            ...m,
+            senderId: senderPart?.id || 'system'
+          };
+        });
+
+        if (newMessages.length === 0) return room;
+
+        return {
+          ...room,
+          messages: [...room.messages, ...newMessages].sort((a, b) => a.timestamp - b.timestamp),
+          lastMessageAt: Math.max(room.lastMessageAt, ...newMessages.map(m => m.timestamp))
+        };
+      }));
+    } catch (err) { console.error("Message sync error:", err); }
+  }, [activeRoom.name, currentView]);
+
   useEffect(() => {
     if (currentView === 'CHAT') {
       syncRealUsers();
-      const interval = setInterval(syncRealUsers, 30000);
-      return () => clearInterval(interval);
+      syncMessages();
+      const userInterval = setInterval(syncRealUsers, 30000);
+      const msgInterval = setInterval(syncMessages, 3000); // 3 saniyede bir yeni mesajları kontrol et
+      return () => {
+        clearInterval(userInterval);
+        clearInterval(msgInterval);
+      };
     }
-  }, [currentView, syncRealUsers]);
+  }, [currentView, syncRealUsers, syncMessages]);
 
   const handleLoginSuccess = (userData: UserRegistration) => {
     const participant: Participant = {
@@ -60,11 +98,8 @@ const App: React.FC = () => {
       color: 'bg-slate-700'
     };
     setCurrentUser(participant);
-    setTempNick(participant.name);
     setCurrentView('CHAT');
   };
-
-  const activeRoom = useMemo(() => rooms.find(r => r.id === activeRoomId) || rooms[0], [rooms, activeRoomId]);
 
   const handleSwitchTab = (roomId: string) => {
     setActiveRoomId(roomId);
@@ -73,31 +108,54 @@ const App: React.FC = () => {
 
   const handleSendMessage = useCallback(async (text: string) => {
     if (!text.trim()) return;
-    const newMessage: Message = { id: `msg-${Date.now()}`, senderId: currentUser.id, text: text, timestamp: Date.now() };
-    setRooms(prev => prev.map(room => room.id === activeRoomId ? { ...room, messages: [...room.messages, newMessage], lastMessageAt: Date.now() } : room));
-    
-    // Bot logic...
-    const currentActiveRoom = rooms.find(r => r.id === activeRoomId);
-    if (currentActiveRoom) {
-      const bots = currentActiveRoom.participants.filter(p => p.isAi);
+
+    // 1. Önce veritabanına kaydet
+    try {
+      await storageService.saveMessage({
+        sender: currentUser.name,
+        text: text,
+        type: MessageType.USER,
+        channel: activeRoom.name
+      });
+      
+      // 2. Yerel mesaj senkronizasyonunu tetikle (opsiyonel, polling zaten yapacak)
+      syncMessages();
+
+      // 3. Bot mantığı
+      const bots = activeRoom.participants.filter(p => p.isAi);
       if (bots.length > 0) {
         const randomBot = bots[Math.floor(Math.random() * bots.length)];
         setTimeout(() => triggerBotResponse(randomBot.id, activeRoomId), 1500);
       }
+    } catch (err) {
+      console.error("Mesaj gönderilemedi:", err);
     }
-  }, [activeRoomId, rooms, currentUser.id]);
+  }, [activeRoomId, activeRoom.name, currentUser, syncMessages]);
 
   const triggerBotResponse = async (botId: string, roomId: string) => {
     const targetRoom = rooms.find(r => r.id === roomId);
     if (!targetRoom) return;
     const bot = targetRoom.participants.find(p => p.id === botId);
     if (!bot) return;
+
     setLoadingState({ status: 'thinking', participantId: botId });
     try {
       const responseText = await generateBotResponse(bot, targetRoom.participants, targetRoom.messages, targetRoom.topic);
-      const botMessage: Message = { id: `msg-bot-${Date.now()}`, senderId: bot.id, text: responseText, timestamp: Date.now() };
-      setRooms(prev => prev.map(r => r.id === roomId ? { ...r, messages: [...r.messages, botMessage], lastMessageAt: Date.now(), hasAlert: roomId !== activeRoomId } : r));
-    } finally { setLoadingState({ status: 'idle' }); }
+      
+      // Bot cevabını DB'ye kaydet
+      await storageService.saveMessage({
+        sender: bot.name,
+        text: responseText,
+        type: MessageType.USER,
+        channel: targetRoom.name
+      });
+
+      syncMessages();
+    } catch (err) {
+      console.error("Bot yanıt hatası:", err);
+    } finally {
+      setLoadingState({ status: 'idle' });
+    }
   };
 
   if (currentView === 'LANDING') return <LandingPage onEnter={handleLoginSuccess} onRegisterClick={() => setCurrentView('REGISTER')} onAdminClick={() => setCurrentView('ADMIN')} />;
@@ -119,7 +177,7 @@ const App: React.FC = () => {
         </div>
       </div>
 
-      {/* Toolbar - Specific items removed as requested */}
+      {/* Toolbar */}
       <div className="h-10 bg-[#f1f1f1] border-b border-[#808080] flex items-center px-1 gap-0.5 shrink-0 overflow-x-auto no-scrollbar">
         {[
           { icon: <Power size={14} />, text: 'Kopart' },
