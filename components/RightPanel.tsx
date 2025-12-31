@@ -49,14 +49,14 @@ export const RightPanel: React.FC<RightPanelProps> = ({
   });
 
   return (
-    <div className="w-24 md:w-40 flex flex-col h-full font-mono text-[11px] select-none bg-white border-l border-gray-400 shrink-0">
+    <div className="w-24 md:w-32 flex flex-col h-full font-mono text-[10px] md:text-[11px] select-none bg-white border-l border-gray-100 shrink-0">
         
         {/* Header Count */}
-        <div className="bg-[#f0f0f0] border-b border-gray-300 p-1 font-bold text-center text-gray-600 uppercase flex justify-between items-center px-1.5">
-            <span className="truncate">U: {room.participants.length}</span>
+        <div className="bg-[#f8fafc] border-b border-gray-100 p-1.5 font-bold text-center text-gray-400 uppercase flex justify-between items-center px-1.5">
+            <span className="truncate">USER: {room.participants.length}</span>
             <button 
                 onClick={() => setIsAdding(!isAdding)} 
-                className="text-blue-800 hover:text-red-600 font-bold px-0.5"
+                className="text-blue-400 hover:text-blue-700 font-bold px-0.5"
                 title="Bot Ekle"
             >
                 [+]
@@ -65,51 +65,50 @@ export const RightPanel: React.FC<RightPanelProps> = ({
 
         {/* Add Bot Form (Overlay) */}
         {isAdding && (
-            <div className="absolute top-8 right-1 w-40 bg-[#d4dce8] border-2 border-white shadow-[4px_4px_5px_rgba(0,0,0,0.3)] p-2 z-20 outline outline-1 outline-gray-500">
+            <div className="absolute top-10 right-1 w-36 bg-white border border-gray-200 shadow-xl rounded-xl p-3 z-20">
                 <form onSubmit={handleAddSubmit} className="space-y-2">
-                    <div className="text-[9px] font-bold text-[#000080] mb-1 uppercase">BOT EKLE</div>
+                    <div className="text-[9px] font-black text-gray-400 mb-1 uppercase tracking-widest">Bot Ekle</div>
                     <input 
-                        className="w-full border border-gray-500 p-1 h-6 text-[10px]" 
+                        className="w-full border border-gray-100 bg-gray-50 rounded-lg p-1.5 h-7 text-[10px] outline-none focus:border-blue-400" 
                         placeholder="Bot Adı"
                         autoFocus
                         value={newBotName}
                         onChange={e => setNewBotName(e.target.value)}
                     />
                     <div className="flex gap-1">
-                        <button type="submit" className="flex-1 bg-white border border-gray-500 text-[10px] font-bold hover:bg-blue-100">OK</button>
-                        <button type="button" onClick={() => setIsAdding(false)} className="flex-1 bg-white border border-gray-500 text-[10px] font-bold hover:bg-red-100">X</button>
+                        <button type="submit" className="flex-1 bg-blue-600 text-white rounded-lg text-[9px] font-bold p-1 hover:bg-blue-700">EKLE</button>
+                        <button type="button" onClick={() => setIsAdding(false)} className="flex-1 bg-gray-100 text-gray-400 rounded-lg text-[9px] font-bold p-1">X</button>
                     </div>
                 </form>
             </div>
         )}
 
         {/* List */}
-        <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300">
+        <div className="flex-1 overflow-y-auto no-scrollbar py-1">
             {sortedParticipants.map(p => {
                 // Determine Prefix
                 let prefix = "";
-                let colorClass = "text-black";
+                let colorClass = "text-gray-800";
                 
                 if (p.isAi) {
                     prefix = "@"; // Op/Bot
-                    colorClass = "text-[#800000]"; // Red for Ops/Bots 
+                    colorClass = "text-pink-600"; // Pink for AI/Bot 
                 } else {
                     prefix = "+"; // Voice/User
-                    colorClass = "text-[#000080]"; // Blue for regular
+                    colorClass = "text-blue-800"; // Blue for regular
                 }
 
                 return (
                     <div 
                         key={p.id} 
-                        className="group flex items-center px-1.5 py-[0.5px] hover:bg-[#000080] hover:text-white cursor-default"
+                        className="group flex items-center px-2 py-1 hover:bg-blue-50 cursor-pointer rounded-lg mx-1 transition-colors"
                         title="Özel sohbet için çift tıklayın"
                         onDoubleClick={() => onUserDoubleClick(p)}
                     >
-                        {/* Always visible View */}
-                        <span className={`w-3 font-bold ${colorClass} group-hover:text-white`}>
+                        <span className={`w-3 font-black text-[9px] shrink-0 ${colorClass}`}>
                             {prefix}
                         </span>
-                        <span className={`truncate font-bold ${colorClass} group-hover:text-white flex-1`}>
+                        <span className={`truncate font-bold ${colorClass} flex-1`}>
                             {p.name}
                         </span>
 
@@ -117,7 +116,7 @@ export const RightPanel: React.FC<RightPanelProps> = ({
                         {!p.isAi && p.id !== 'user-1' && (
                             <button 
                                 onClick={(e) => { e.stopPropagation(); onRemoveParticipant(p.id); }}
-                                className="hidden group-hover:block text-white hover:text-red-300 font-bold px-0.5"
+                                className="hidden group-hover:block text-red-400 hover:text-red-600 font-bold px-0.5"
                             >
                                 <X size={10} />
                             </button>
