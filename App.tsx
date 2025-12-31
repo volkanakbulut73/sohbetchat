@@ -202,8 +202,8 @@ const App: React.FC = () => {
   if (currentView === 'ADMIN') return <AdminDashboard onLogout={() => setCurrentView('LANDING')} />;
 
   return (
-    <div className="fixed inset-0 flex flex-col overflow-hidden bg-[#d4dce8] font-sans selection:bg-blue-200">
-      <header className="h-9 bg-[#000080] flex items-center justify-between px-2 text-white border-b-2 border-white select-none shrink-0">
+    <div className="fixed inset-0 flex flex-col overflow-hidden bg-white font-sans selection:bg-blue-200">
+      <header className="h-9 bg-[#000080] flex items-center justify-between px-2 text-white border-b border-white select-none shrink-0">
         <div className="flex items-center gap-2">
           <Shield size={14} className="text-yellow-400" />
           <span className="font-bold text-xs uppercase tracking-tighter">Workigom Chat - [USER: {currentUser.name}]</span>
@@ -219,16 +219,16 @@ const App: React.FC = () => {
         </div>
       </header>
 
-      <div className="flex-1 flex flex-col p-1 min-h-0">
-        <div className="flex items-end px-1 gap-0.5 bg-[#000080] pt-1 border-t border-l border-r border-black mx-0.5 overflow-x-auto no-scrollbar">
+      <div className="flex-1 flex flex-col min-h-0 bg-white">
+        <div className="flex items-end bg-[#000080] border-t border-black overflow-x-auto no-scrollbar">
           {rooms.map(room => (
             <button
               key={room.id}
               onClick={() => handleSwitchTab(room.id)}
-              className={`px-3 py-1 text-xs font-bold rounded-t-[3px] min-w-[90px] transition-all flex items-center justify-between gap-2 border-r border-blue-900 ${
+              className={`px-3 py-1.5 text-[11px] font-bold rounded-t-[2px] min-w-[100px] transition-all flex items-center justify-between gap-2 border-r border-[#000060] ${
                 activeRoomId === room.id 
-                  ? 'bg-[#d4dce8] text-black border-t-2 border-l-2 border-white' 
-                  : (room.hasAlert ? 'bg-red-600 text-white animate-pulse' : 'bg-[#b0b8c4] text-gray-700 hover:bg-[#c4ccd8]')
+                  ? 'bg-white text-black' 
+                  : (room.hasAlert ? 'bg-red-600 text-white animate-pulse' : 'bg-[#bfc6cf] text-gray-700 hover:bg-[#d0d7e0]')
               }`}
             >
               <span className="truncate">{room.name}</span>
@@ -247,7 +247,7 @@ const App: React.FC = () => {
           ))}
         </div>
 
-        <div className="flex-1 flex border-2 border-white bg-white shadow-inner relative overflow-hidden">
+        <div className="flex-1 flex bg-white relative overflow-hidden border-t border-gray-300">
           <ChatArea 
             room={activeRoom} 
             currentUser={currentUser} 
