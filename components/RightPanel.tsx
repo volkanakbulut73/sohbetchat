@@ -54,15 +54,6 @@ export const RightPanel: React.FC<RightPanelProps> = ({ room }) => {
           </div>
         ))}
       </div>
-
-      {/* Right-most Channel Bar (Partial from image) */}
-      <div className="w-full h-auto bg-[#c0c0c0] border-t border-[#808080] p-1 space-y-0.5">
-        {['#SohbetChe.Net', '#Radyo', '#Oyun', '#Kelime', '#Yarisma'].map(ch => (
-          <div key={ch} className="text-[10px] text-red-600 font-bold truncate leading-tight">
-            {ch}
-          </div>
-        ))}
-      </div>
     </div>
   );
 };

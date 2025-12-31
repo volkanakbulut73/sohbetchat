@@ -119,24 +119,13 @@ const App: React.FC = () => {
         </div>
       </div>
 
-      {/* Menu Bar */}
-      <div className="h-5 bg-[#f1f1f1] border-b border-[#808080] flex items-center px-1 gap-3 text-[11px]">
-        {['Dosya', 'Görünüm', 'Kanallar', 'Araçlar', 'mIRC 6.35 Menu', 'Pencereler', 'Yardım'].map(m => (
-          <button key={m} className="hover:bg-[#000080] hover:text-white px-1">{m}</button>
-        ))}
-      </div>
-
-      {/* Toolbar */}
+      {/* Toolbar - Specific items removed as requested */}
       <div className="h-10 bg-[#f1f1f1] border-b border-[#808080] flex items-center px-1 gap-0.5 shrink-0 overflow-x-auto no-scrollbar">
         {[
           { icon: <Power size={14} />, text: 'Kopart' },
           { icon: <List size={14} />, text: 'Kanal Listesi' },
           { icon: <Radio size={14} />, text: 'Radyo Aç/Kapat' },
-          { icon: <UserCheck size={14} />, text: 'Özeli Aç/Kapat' },
-          { icon: <Settings size={14} />, text: 'Nick Şifre' },
-          { icon: <Key size={14} />, text: 'Kanal Şifre' },
-          { icon: <MessageSquare size={14} />, text: 'Ajoin Ekle' },
-          { icon: <HelpCircle size={14} />, text: 'Komut Yardım' }
+          { icon: <UserCheck size={14} />, text: 'Özeli Aç/Kapat' }
         ].map((item, idx) => (
           <button key={idx} className="h-8 min-w-[80px] flex flex-col items-center justify-center hover:bg-gray-200 mirc-border px-1">
             <span className="text-yellow-600">{item.icon}</span>
