@@ -3,51 +3,52 @@
 @tailwind components;
 @tailwind utilities;
 
-@keyframes message-slide-up {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
+@layer base {
+  body {
+    @apply m-0 p-0 overflow-hidden select-none bg-[#f1f1f1];
+    font-family: "Segoe UI", Tahoma, Verdana, Arial, sans-serif;
   }
 }
 
-.animate-message {
-  animation: message-slide-up 0.3s ease-out forwards;
+/* mIRC Klasik Yazı Tipi */
+.mirc-font {
+  font-family: "Fixedsys", "Courier New", monospace;
+  font-size: 13px;
 }
 
-/* Custom scrollbar - Softer version */
+.mirc-text {
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+/* Klasik Windows Kaydırma Çubuğu */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 16px;
+  height: 16px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #f8fafc;
+  background: #f1f1f1;
+  border: 1px solid #d1d1d1;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
-  border-radius: 10px;
+  background: #e1e1e1;
+  border: 1px solid #7a7a7a;
+  box-shadow: inset 1px 1px 0px #fff;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
+  background: #d1d1d1;
 }
 
-html {
-  scroll-behavior: smooth;
+.mirc-border {
+  border: 2px solid;
+  border-color: #ffffff #808080 #808080 #ffffff;
 }
 
-body {
-  margin: 0;
-  padding: 0;
-  overflow-x: hidden;
-  background-color: #f1f5f9;
-}
-
-.no-scrollbar::-webkit-scrollbar {
-  display: none;
+.mirc-inset {
+  border: 2px solid;
+  border-color: #808080 #ffffff #ffffff #808080;
 }

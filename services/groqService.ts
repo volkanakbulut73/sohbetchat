@@ -1,58 +1,16 @@
 
+import { GoogleGenAI } from "@google/genai";
 import { storageService } from "./storageService";
 import { Participant, Message } from '../types';
 
 /**
- * Groq API Configuration
- * Gemini tamamen kaldırıldı, Llama 3.3 (Groq) kullanılıyor.
+ * Gemini API Configuration
+ * Re-implementing AI logic with Google Gemini 3 Pro as per developer expertise and project guidelines.
  */
-const GROQ_MODEL = "llama-3.3-70b-versatile";
-const GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions";
+const GEMINI_MODEL = "gemini-3-pro-preview";
 
 /**
- * Doğrudan Groq API çağrısı yapan fonksiyon
- */
-async function callGroqApi(messages: any[], systemInstruction?: string): Promise<string> {
-    try {
-        const apiKey = process.env.API_KEY;
-        if (!apiKey) {
-            throw new Error("Sistemde API anahtarı bulunamadı.");
-        }
-
-        const payload = {
-            model: GROQ_MODEL,
-            messages: [
-                ...(systemInstruction ? [{ role: "system", content: systemInstruction }] : []),
-                ...messages
-            ],
-            temperature: 0.8,
-            max_tokens: 500
-        };
-
-        const response = await fetch(GROQ_API_URL, {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${apiKey}`,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(payload)
-        });
-
-        if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.error?.message || `HTTP hatası! Durum: ${response.status}`);
-        }
-
-        const data = await response.json();
-        return data.choices?.[0]?.message?.content || "...";
-    } catch (error) {
-        console.error("Groq API Hatası:", error);
-        return "... (Bağlantı hatası: Groq servisi şu an yanıt vermiyor)";
-    }
-}
-
-/**
- * App.tsx tarafından kullanılan ana bot yanıt fonksiyonu
+ * Main bot response function using Gemini API
  */
 export const generateBotResponse = async (
     targetBot: Participant,
@@ -60,25 +18,28 @@ export const generateBotResponse = async (
     chatHistory: Message[],
     topic: string
 ): Promise<string> => {
+    // Initializing Gemini client with process.env.API_KEY as strictly required
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     
-    // 1. Bağlam Hazırlığı
+    // 1. Context Preparation
     const participantDescriptions = allParticipants
         .map(p => `- ${p.name} (${p.isAi ? 'Bot' : 'İnsan'}): ${p.persona}`)
         .join('\n');
 
-    const recentMessages = chatHistory.slice(-10);
+    // Gemini multi-turn format uses 'user' and 'model' roles
+    const recentMessages = chatHistory.slice(-15);
     const conversationHistory = recentMessages.map(msg => {
         const sender = allParticipants.find(p => p.id === msg.senderId);
         const senderName = sender ? sender.name : 'Bilinmeyen';
         return {
-            role: sender?.id === targetBot.id ? "assistant" : "user",
-            content: `${senderName}: ${msg.text}`
+            role: sender?.id === targetBot.id ? "model" : "user",
+            parts: [{ text: `${senderName}: ${msg.text}` }]
         };
     });
 
-    // 2. Sistem Talimatı Oluşturma
-    const systemPrompt = `
-Sen bir mIRC sohbet odasındasın.
+    // 2. System Instruction Construction
+    const systemInstruction = `
+Sen bir mIRC sohbet odasındasın (Workigom Secure Network).
 Konu: ${topic}
 
 Odadaki Katılımcılar:
@@ -94,30 +55,51 @@ KURALLAR:
 3. mIRC jargonunu kullan (kısa, samimi, bazen emojili).
 4. Diğer kullanıcıların yazdıklarına göre doğal tepkiler ver.
 5. Türkçe karakter kullan ama internet diline sadık kal.
+6. Gerçek bir mIRC kullanıcısı gibi davran; bilgece, iğneleyici veya neşeli olabilirsin.
 `;
 
-    const groqMessages = conversationHistory.map(m => ({
-        role: m.role as "user" | "assistant",
-        content: m.content
-    }));
+    try {
+        const response = await ai.models.generateContent({
+            model: GEMINI_MODEL,
+            contents: conversationHistory,
+            config: {
+                systemInstruction,
+                temperature: 0.8,
+                topP: 0.95,
+                topK: 40
+            }
+        });
 
-    return await callGroqApi(groqMessages, systemPrompt);
+        // Directly accessing .text property as per GenerateContentResponse guidelines
+        return response.text || "...";
+    } catch (error) {
+        console.error("Gemini API Execution Error:", error);
+        return "... (Bağlantı hatası: Gemini servisi şu an yanıt vermiyor)";
+    }
 };
 
 /**
- * Eski yapı için uyumluluk nesnesi
+ * Compatibility object maintained for existing imports
  */
 export const groqService = {
   async getChatResponse(prompt: string, sender: string): Promise<string> {
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     try {
       const botPersonality = await storageService.getBotConfig();
       const systemInstruction = `${botPersonality}
       - Sohbet ettiğin nick: ${sender}.
       - Yanıtlar mIRC kültürüne uygun olsun.`;
 
-      return await callGroqApi([{ role: "user", content: prompt }], systemInstruction);
+      const response = await ai.models.generateContent({
+        model: GEMINI_MODEL,
+        contents: [{ role: "user", parts: [{ text: prompt }] }],
+        config: { systemInstruction }
+      });
+
+      return response.text || "Sistem: Bağlantı hatası (Gemini Timeout).";
     } catch (error) {
-      return "Sistem: Bağlantı hatası (Groq Timeout).";
+      console.error("Gemini Compatibility Error:", error);
+      return "Sistem: Bağlantı hatası (Gemini Timeout).";
     }
   }
 };
