@@ -20,7 +20,6 @@ const App: React.FC = () => {
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [tempNick, setTempNick] = useState(currentUser.name);
 
-  // Supabase'den onaylı gerçek kullanıcıları çekme
   const syncRealUsers = useCallback(async () => {
     if (!storageService.isConfigured()) return;
     
@@ -38,14 +37,9 @@ const App: React.FC = () => {
         }));
 
       setRooms(prevRooms => prevRooms.map(room => {
-        // Mevcut kullanıcı + botlar + veritabanından gelen onaylı kullanıcılar
         const allParticipants = [currentUser, ...PREMADE_BOTS, ...approvedParticipants];
         const uniqueParticipants = Array.from(new Map(allParticipants.map(p => [p.id, p])).values());
-
-        return {
-          ...room,
-          participants: uniqueParticipants
-        };
+        return { ...room, participants: uniqueParticipants };
       }));
     } catch (err) {
       console.error("User sync error:", err);
@@ -55,7 +49,7 @@ const App: React.FC = () => {
   useEffect(() => {
     if (currentView === 'CHAT') {
       syncRealUsers();
-      const interval = setInterval(syncRealUsers, 30000); // 30 saniyede bir güncelle
+      const interval = setInterval(syncRealUsers, 30000);
       return () => clearInterval(interval);
     }
   }, [currentView, syncRealUsers]);
@@ -85,10 +79,8 @@ const App: React.FC = () => {
 
   const handleStartPrivateChat = (target: Participant) => {
     if (target.id === currentUser.id) return;
-    
     const roomId = `private-${target.id}`;
     const existingRoom = rooms.find(r => r.id === roomId);
-
     if (existingRoom) {
       setActiveRoomId(roomId);
     } else {
@@ -110,35 +102,19 @@ const App: React.FC = () => {
   const triggerBotResponse = async (botId: string, roomId: string) => {
     const targetRoom = rooms.find(r => r.id === roomId);
     if (!targetRoom) return;
-    
     const bot = targetRoom.participants.find(p => p.id === botId);
     if (!bot) return;
 
     setLoadingState({ status: 'thinking', participantId: botId });
-
     try {
-      const responseText = await generateBotResponse(
-        bot,
-        targetRoom.participants,
-        targetRoom.messages,
-        targetRoom.topic
-      );
-
+      const responseText = await generateBotResponse(bot, targetRoom.participants, targetRoom.messages, targetRoom.topic);
       const botMessage: Message = {
         id: `msg-bot-${Date.now()}`,
         senderId: bot.id,
         text: responseText,
         timestamp: Date.now()
       };
-
-      setRooms(prev => prev.map(r => 
-        r.id === roomId ? { 
-          ...r, 
-          messages: [...r.messages, botMessage], 
-          lastMessageAt: Date.now(),
-          hasAlert: roomId !== activeRoomId 
-        } : r
-      ));
+      setRooms(prev => prev.map(r => r.id === roomId ? { ...r, messages: [...r.messages, botMessage], lastMessageAt: Date.now(), hasAlert: roomId !== activeRoomId } : r));
     } catch (err) {
       console.error("Bot trigger error:", err);
     } finally {
@@ -148,21 +124,8 @@ const App: React.FC = () => {
 
   const handleSendMessage = useCallback(async (text: string) => {
     if (!text.trim()) return;
-
-    const newMessage: Message = {
-      id: `msg-${Date.now()}`,
-      senderId: currentUser.id,
-      text: text,
-      timestamp: Date.now()
-    };
-
-    setRooms(prev => prev.map(room => {
-      if (room.id === activeRoomId) {
-        return { ...room, messages: [...room.messages, newMessage], lastMessageAt: Date.now() };
-      }
-      return room;
-    }));
-
+    const newMessage: Message = { id: `msg-${Date.now()}`, senderId: currentUser.id, text: text, timestamp: Date.now() };
+    setRooms(prev => prev.map(room => room.id === activeRoomId ? { ...room, messages: [...room.messages, newMessage], lastMessageAt: Date.now() } : room));
     const currentActiveRoom = rooms.find(r => r.id === activeRoomId);
     if (currentActiveRoom) {
       if (currentActiveRoom.type === 'channel') {
@@ -173,9 +136,7 @@ const App: React.FC = () => {
         }
       } else if (currentActiveRoom.type === 'private') {
         const target = currentActiveRoom.participants.find(p => p.id === currentActiveRoom.targetUserId);
-        if (target && target.isAi) {
-          setTimeout(() => triggerBotResponse(target.id, activeRoomId), 1000);
-        }
+        if (target && target.isAi) setTimeout(() => triggerBotResponse(target.id, activeRoomId), 1000);
       }
     }
   }, [activeRoomId, rooms, currentUser.id]);
@@ -192,9 +153,7 @@ const App: React.FC = () => {
   };
 
   const handleLogout = () => {
-    if (window.confirm("Çıkış yapmak istediğinize emin misiniz?")) {
-      setCurrentView('LANDING');
-    }
+    if (window.confirm("Çıkış yapmak istediğinize emin misiniz?")) setCurrentView('LANDING');
   };
 
   if (currentView === 'LANDING') return <LandingPage onEnter={handleLoginSuccess} onRegisterClick={() => setCurrentView('REGISTER')} onAdminClick={() => setCurrentView('ADMIN')} />;
@@ -202,8 +161,8 @@ const App: React.FC = () => {
   if (currentView === 'ADMIN') return <AdminDashboard onLogout={() => setCurrentView('LANDING')} />;
 
   return (
-    <div className="fixed inset-0 flex flex-col overflow-hidden bg-white font-sans selection:bg-blue-200">
-      <header className="h-9 bg-[#000080] flex items-center justify-between px-2 text-white border-b border-white select-none shrink-0">
+    <div className="fixed inset-0 flex flex-col overflow-hidden bg-white font-sans selection:bg-blue-200 m-0 p-0 border-none">
+      <header className="h-9 bg-[#000080] flex items-center justify-between px-2 text-white border-b border-white/20 select-none shrink-0 m-0 p-0">
         <div className="flex items-center gap-2">
           <Shield size={14} className="text-yellow-400" />
           <span className="font-bold text-xs uppercase tracking-tighter">Workigom Chat - [USER: {currentUser.name}]</span>
@@ -219,8 +178,8 @@ const App: React.FC = () => {
         </div>
       </header>
 
-      <div className="flex-1 flex flex-col min-h-0 bg-white">
-        <div className="flex items-end bg-[#000080] border-t border-black overflow-x-auto no-scrollbar">
+      <div className="flex-1 flex flex-col min-h-0 bg-white m-0 p-0 overflow-hidden">
+        <div className="flex items-end bg-[#000080] border-t border-black/40 overflow-x-auto no-scrollbar m-0 p-0">
           {rooms.map(room => (
             <button
               key={room.id}
@@ -247,7 +206,7 @@ const App: React.FC = () => {
           ))}
         </div>
 
-        <div className="flex-1 flex bg-white relative overflow-hidden border-t border-gray-300">
+        <div className="flex-1 flex bg-white relative overflow-hidden m-0 p-0">
           <ChatArea 
             room={activeRoom} 
             currentUser={currentUser} 
@@ -274,17 +233,9 @@ const App: React.FC = () => {
             <div className="p-4 space-y-4">
               <div>
                 <label className="block text-[10px] font-bold text-gray-700 uppercase mb-1">Yeni Rumuz:</label>
-                <input 
-                  type="text" 
-                  value={tempNick} 
-                  onChange={e => setTempNick(e.target.value)} 
-                  className="w-full border-2 border-gray-400 p-1 text-sm outline-none font-mono focus:border-blue-800"
-                />
+                <input type="text" value={tempNick} onChange={e => setTempNick(e.target.value)} className="w-full border-2 border-gray-400 p-1 text-sm outline-none font-mono focus:border-blue-800" />
               </div>
-              <button 
-                onClick={handleSaveSettings} 
-                className="w-full py-1.5 bg-[#d4dce8] border-2 border-white border-b-black border-r-black font-bold text-xs uppercase hover:bg-white active:bg-gray-200 flex items-center justify-center gap-2"
-              >
+              <button onClick={handleSaveSettings} className="w-full py-1.5 bg-[#d4dce8] border-2 border-white border-b-black border-r-black font-bold text-xs uppercase hover:bg-white active:bg-gray-200 flex items-center justify-center gap-2">
                 <Save size={14} /> KAYDET
               </button>
             </div>
