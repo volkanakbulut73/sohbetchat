@@ -1,67 +1,37 @@
 
-POCKETBASE KURULUM VE KOLEKSİYON REHBERİ
-========================================
+SUPABASE SQL KURULUMU
+=====================
 
-Uygulamanın çalışabilmesi için PocketBase Admin Paneli (http://127.0.0.1:8090/_/) üzerinde
-aşağıdaki "Collections" (Koleksiyonlar) manuel olarak oluşturulmalıdır.
+Aşağıdaki kodları Supabase panelinizde "SQL Editor" bölümüne yapıştırıp "RUN" diyerek çalıştırın.
+Bu işlem gerekli tüm tabloları oluşturacaktır.
 
-Geliştirme aşamasında kolaylık olması için API Rules kısımlarını boş (public) bırakabilirsiniz.
+-- 1. registrations tablosu (Kullanıcı verileri)
+CREATE TABLE IF NOT EXISTS registrations (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  nickname TEXT UNIQUE NOT NULL,
+  full_name TEXT,
+  email TEXT UNIQUE NOT NULL,
+  password TEXT, -- Not: Prodüksiyonda şifreler hashlenmelidir
+  criminal_record_file TEXT, -- Base64 string (dikkat: büyük dosyalar için Storage kullanılmalı)
+  insurance_file TEXT,       -- Base64 string
+  status TEXT DEFAULT 'pending'
+);
 
-1. KOLEKSİYON: registrations
-   Type: Base
-   Fields:
-   - nickname (Text)
-   - full_name (Text)
-   - email (Email)
-   - password (Text)
-   - criminal_record_file (Text) -> (Base64 string saklayacağı için Text seçin)
-   - insurance_file (Text) -> (Base64 string saklayacağı için Text seçin)
-   - status (Select) -> Options: pending, approved, rejected
+-- 2. system_config tablosu (Admin ve Bot ayarları)
+CREATE TABLE IF NOT EXISTS system_config (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  key TEXT UNIQUE NOT NULL,
+  value TEXT
+);
 
-2. KOLEKSİYON: messages
-   Type: Base
-   Fields:
-   - sender (Text)
-   - text (Text)
-   - type (Text)
-   - channel (Text)
+-- Örnek Admin ve Bot Verisi Ekleme
+INSERT INTO system_config (key, value)
+VALUES 
+  ('admin_username', 'admin'),
+  ('admin_password', 'password123'),
+  ('bot_personality', 'Sen mIRC botu Larasın. Samimi ve naziksin.')
+ON CONFLICT (key) DO NOTHING;
 
-3. KOLEKSİYON: channels
-   Type: Base
-   Fields:
-   - name (Text)
-   - islocked (Bool)
-
-   * Örnek Veri Ekleme (Channels):
-     "New Record" diyerek name="#Sohbet" ve islocked=False olan bir kayıt ekleyin.
-
-4. KOLEKSİYON: system_config
-   Type: Base
-   Fields:
-   - key (Text)
-   - value (Text)
-
-   * Örnek Veri Ekleme (Admin Girişi İçin):
-     1. Kayıt: key="admin_username", value="admin"
-     2. Kayıt: key="admin_password", value="password123"
-     3. Kayıt: key="bot_personality", value="Sen mIRC botu Lara'sın..."
-
-5. KOLEKSİYON: notifications_log
-   Type: Base
-   Fields:
-   - type (Text)
-   - target (Text)
-   - subject (Text)
-   - body (Text)
-   - sender_admin (Text)
-
-API RULES (İZİNLER)
--------------------
-Sağ üstteki "Edit Collection" -> "API Rules" sekmesinden:
-- List/Search action: Boş bırakın (Public) veya "@request.auth.id != ''"
-- View action: Boş bırakın (Public)
-- Create action: Boş bırakın (Public)
-- Update action: Boş bırakın (Public)
-- Delete action: Boş bırakın (Public)
-
-Not: Prodüksiyon ortamında bu kurallar sıkılaştırılmalıdır.
+-- Not: 'messages', 'channels' ve 'notifications_log' tabloları 
+-- POCKETBASE tarafında kalmaya devam edecek (Realtime Chat için).

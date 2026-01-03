@@ -1,43 +1,46 @@
 
 import PocketBase from 'pocketbase';
+import { createClient } from '@supabase/supabase-js';
 import { Message, Channel, MessageType, UserRegistration } from '../types';
 import { CHAT_MODULE_CONFIG } from '../config';
 
-export const isConfigured = () => 
-  CHAT_MODULE_CONFIG.POCKETBASE_URL && 
-  CHAT_MODULE_CONFIG.POCKETBASE_URL.startsWith('http');
-
+// --- 1. POCKETBASE (Chat & Realtime) ---
 const pbUrl = CHAT_MODULE_CONFIG.POCKETBASE_URL || 'http://127.0.0.1:8090';
 export const pb = new PocketBase(pbUrl);
-
-// Otomatik iptal işlemleri için
 pb.autoCancellation(false);
 
+// --- 2. SUPABASE (Auth & User Management) ---
+const sbUrl = CHAT_MODULE_CONFIG.SUPABASE_URL || '';
+const sbKey = CHAT_MODULE_CONFIG.SUPABASE_ANON_KEY || '';
+// Eğer config boşsa hata vermemesi için dummy client, ama fonksiyonlarda kontrol edeceğiz
+export const supabase = (sbUrl && sbKey) 
+  ? createClient(sbUrl, sbKey) 
+  : null;
+
+export const isConfigured = () => {
+  return (
+    CHAT_MODULE_CONFIG.POCKETBASE_URL && 
+    CHAT_MODULE_CONFIG.POCKETBASE_URL.startsWith('http') &&
+    CHAT_MODULE_CONFIG.SUPABASE_URL && 
+    CHAT_MODULE_CONFIG.SUPABASE_URL.startsWith('http')
+  );
+};
+
 const handleFetchError = (err: any, context: string) => {
+  console.error(`Error in ${context}:`, err);
   if (typeof window !== 'undefined' && !navigator.onLine) throw new Error("İnternet bağlantınız yok.");
   
-  // PocketBase detaylı hata çözümlemesi
-  const msg = err.message || err.data?.message || String(err);
-  
-  // Validation hatalarını birleştir
-  if (err.data?.data) {
-    const details = Object.entries(err.data.data)
-      .map(([key, val]: [string, any]) => `${key}: ${val.message}`)
-      .join(', ');
-    if (details) {
-      console.error(`PocketBase Validation Error [${context}]:`, details);
-      throw new Error(details);
-    }
-  }
-
-  console.error(`PocketBase Error [${context}]:`, msg, err.data);
+  const msg = err.message || err.error_description || String(err);
   throw new Error(msg); 
 };
 
 export const storageService = {
   isConfigured,
 
-  // --- Realtime Subscriptions ---
+  // ==========================================
+  // POCKETBASE BÖLÜMÜ (MESAJLAŞMA)
+  // ==========================================
+
   async subscribeToMessages(callback: (msg: Message) => void) {
     try {
       return await pb.collection('messages').subscribe('*', (e) => {
@@ -53,8 +56,8 @@ export const storageService = {
         }
       });
     } catch (err) {
-      console.error("Realtime bağlantı hatası:", err);
-      return () => {}; // Boş fonksiyon döndür
+      console.error("PB Realtime Error:", err);
+      return () => {}; 
     }
   },
 
@@ -62,218 +65,6 @@ export const storageService = {
     try {
       return await pb.collection('messages').unsubscribe();
     } catch (err) { }
-  },
-  // -----------------------------
-
-  async getBotConfig(): Promise<string> {
-    try {
-      const record = await pb.collection('system_config').getFirstListItem('key="bot_personality"');
-      return record.value || "Sen mIRC botu Lara'sın. Samimi ve naziksin.";
-    } catch (e: any) {
-      return "Sen mIRC botu Lara'sın. Samimi ve naziksin.";
-    }
-  },
-
-  async updateBotConfig(personality: string) {
-    try {
-      try {
-        const record = await pb.collection('system_config').getFirstListItem('key="bot_personality"');
-        await pb.collection('system_config').update(record.id, { value: personality });
-      } catch (e: any) {
-        if (e.status === 404) {
-          await pb.collection('system_config').create({ key: 'bot_personality', value: personality });
-        }
-      }
-    } catch (e) { handleFetchError(e, 'updateBotConfig'); }
-  },
-
-  async registerUser(regData: UserRegistration) {
-    try {
-      // Önce manuel unique kontrolü yapalım (Daha temiz hata mesajı için)
-      try {
-        const existing = await pb.collection('registrations').getList(1, 1, {
-            filter: `email="${regData.email}" || nickname="${regData.nickname}"`
-        });
-        if (existing.totalItems > 0) {
-            // Hangisinin çakıştığını bulmaya çalış
-            const found = existing.items[0];
-            if (found.email === regData.email) throw new Error('Bu email adresi zaten sistemde kayıtlı.');
-            if (found.nickname === regData.nickname) throw new Error('Bu nickname başkası tarafından alınmış.');
-            throw new Error('Bu email veya nickname zaten kullanımda.');
-        }
-      } catch (checkErr: any) {
-          // Eğer bizim fırlattığımız hataysa yukarı gönder
-          if (checkErr.message.includes('zaten')) throw checkErr;
-      }
-
-      await pb.collection('registrations').create({
-        nickname: regData.nickname,
-        full_name: regData.fullName,
-        email: regData.email,
-        password: regData.password,
-        criminal_record_file: regData.criminal_record_file,
-        insurance_file: regData.insurance_file,
-        status: 'pending'
-      });
-    } catch (e) { handleFetchError(e, 'registerUser'); }
-  },
-
-  async registerGoogleUser(email: string, fullName: string, nickname: string) {
-    try {
-      const existing = await pb.collection('registrations').getList(1, 1, { filter: `email="${email}"` });
-      if (existing.totalItems > 0) return;
-
-      await pb.collection('registrations').create({
-        nickname: nickname,
-        full_name: fullName,
-        email: email,
-        password: 'google_oauth_no_password',
-        status: 'pending'
-      });
-    } catch (e) { handleFetchError(e, 'registerGoogleUser'); }
-  },
-
-  async loginUser(email: string, pass: string): Promise<UserRegistration | null> {
-    try {
-      const result = await pb.collection('registrations').getList(1, 1, {
-        filter: `email="${email}" && password="${pass}"`
-      });
-
-      if (result.totalItems === 0) return null;
-      
-      const data = result.items[0];
-      if (data.status === 'rejected') throw new Error('Başvurunuz reddedildi. Lütfen yönetici ile iletişime geçin.');
-      if (data.status === 'pending') throw new Error('Hesabınız henüz onaylanmadı. Lütfen bekleyiniz.');
-      
-      return { 
-        id: data.id,
-        nickname: data.nickname,
-        fullName: data.full_name,
-        email: data.email,
-        status: data.status,
-        created_at: data.created,
-        criminal_record_file: data.criminal_record_file,
-        insurance_file: data.insurance_file
-      } as UserRegistration;
-
-    } catch (e: any) { 
-      if (e.message && (e.message.includes('onaylanmadı') || e.message.includes('bekleyiniz') || e.message.includes('reddedildi'))) throw e;
-      return null; 
-    }
-  },
-
-  async loginWithGoogle(email: string): Promise<UserRegistration | null> {
-    try {
-      const result = await pb.collection('registrations').getList(1, 1, {
-        filter: `email="${email}"`
-      });
-
-      if (result.totalItems === 0) return null;
-
-      const data = result.items[0];
-      if (data.status === 'rejected') throw new Error('Bu Google hesabına bağlı başvuru reddedildi.');
-      if (data.status === 'pending') throw new Error('Google hesabınızla ilişkili başvuru henüz onaylanmadı.');
-      
-      return { 
-          id: data.id,
-          nickname: data.nickname,
-          fullName: data.full_name,
-          email: data.email,
-          status: data.status,
-          created_at: data.created 
-      } as UserRegistration;
-
-    } catch (e: any) { 
-      if (e.message && (e.message.includes('onaylanmadı') || e.message.includes('reddedildi'))) throw e;
-      return null; 
-    }
-  },
-
-  async adminLogin(user: string, pass: string): Promise<boolean> {
-    try {
-      const records = await pb.collection('system_config').getList(1, 10, {
-          filter: 'key="admin_username" || key="admin_password"'
-      });
-      
-      const dbAdmin = records.items.find(r => r.key === 'admin_username')?.value;
-      const dbPass = records.items.find(r => r.key === 'admin_password')?.value;
-      
-      // Eğer veritabanında henüz admin yoksa varsayılanı kabul et
-      if (!dbAdmin || !dbPass) return user === 'admin' && pass === 'password123';
-      
-      return user === dbAdmin && pass === dbPass;
-    } catch (e) { return user === 'admin' && pass === 'password123'; }
-  },
-
-  async getAllRegistrations(): Promise<UserRegistration[]> {
-    if (!isConfigured()) return [];
-    try {
-      const records = await pb.collection('registrations').getFullList({
-          sort: '-created',
-      });
-      return records.map((d: any) => ({ 
-          ...d, 
-          fullName: d.full_name,
-          created_at: d.created
-      })) as UserRegistration[];
-    } catch (err) { return []; }
-  },
-
-  async updateRegistrationStatus(id: string, status: 'approved' | 'rejected') {
-    try {
-      await pb.collection('registrations').update(id, { status });
-    } catch (e) { handleFetchError(e, 'updateStatus'); }
-  },
-
-  async sendChatNotification(channel: string, text: string) {
-    try {
-      let targetChannels: string[] = [];
-      if (channel === 'all') {
-        const records = await pb.collection('channels').getFullList();
-        targetChannels = records.map((c: any) => c.name);
-        if(targetChannels.length === 0) targetChannels = ['#Sohbet']; // Fallback
-      } else { targetChannels = [channel]; }
-      
-      for (const c of targetChannels) {
-          await pb.collection('messages').create({
-              sender: 'SYSTEM',
-              text,
-              type: MessageType.SYSTEM,
-              channel: c
-          });
-      }
-      
-      await pb.collection('notifications_log').create({ 
-          type: 'chat', 
-          target: channel, 
-          body: text, 
-          sender_admin: 'WorkigomAdmin' 
-      });
-    } catch (e) { handleFetchError(e, 'sendChatNotification'); }
-  },
-
-  async getNotificationLogs() {
-    try {
-      const records = await pb.collection('notifications_log').getList(1, 50, {
-          sort: '-created'
-      });
-      return records.items.map((r: any) => ({
-          ...r,
-          created_at: r.created
-      }));
-    } catch (e) { return []; }
-  },
-
-  async getChannels(): Promise<Channel[]> {
-    try {
-      const records = await pb.collection('channels').getFullList();
-      return records.map((c: any) => ({ 
-          ...c, 
-          unreadCount: 0, 
-          users: [], 
-          islocked: c.islocked ?? false
-      })) as Channel[];
-    } catch (e) { return []; }
   },
 
   async getMessagesByChannel(channelName: string): Promise<Message[]> {
@@ -302,6 +93,271 @@ export const storageService = {
         type: message.type, 
         channel: message.channel 
       });
-    } catch (e) { handleFetchError(e, 'saveMessage'); }
+    } catch (e) { handleFetchError(e, 'saveMessage (PocketBase)'); }
+  },
+
+  async sendChatNotification(channel: string, text: string) {
+    try {
+      let targetChannels: string[] = [];
+      if (channel === 'all') {
+        try {
+            const records = await pb.collection('channels').getFullList();
+            targetChannels = records.map((c: any) => c.name);
+        } catch(e) { targetChannels = []; }
+        
+        if(targetChannels.length === 0) targetChannels = ['#Sohbet']; 
+      } else { targetChannels = [channel]; }
+      
+      for (const c of targetChannels) {
+          await pb.collection('messages').create({
+              sender: 'SYSTEM',
+              text,
+              type: MessageType.SYSTEM,
+              channel: c
+          });
+      }
+      
+      // Logu da PocketBase'de tutalım (Chat logları ile beraber)
+      try {
+        await pb.collection('notifications_log').create({ 
+            type: 'chat', 
+            target: channel, 
+            body: text, 
+            sender_admin: 'WorkigomAdmin' 
+        });
+      } catch(e) { console.warn("Log PB'ye yazılamadı:", e); }
+      
+    } catch (e) { handleFetchError(e, 'sendChatNotification'); }
+  },
+
+  async getChannels(): Promise<Channel[]> {
+    try {
+      const records = await pb.collection('channels').getFullList();
+      return records.map((c: any) => ({ 
+          ...c, 
+          unreadCount: 0, 
+          users: [], 
+          islocked: c.islocked ?? false
+      })) as Channel[];
+    } catch (e) { return []; }
+  },
+
+  async getNotificationLogs() {
+    try {
+      const records = await pb.collection('notifications_log').getList(1, 50, {
+          sort: '-created'
+      });
+      return records.items.map((r: any) => ({
+          ...r,
+          created_at: r.created
+      }));
+    } catch (e) { return []; }
+  },
+
+  // ==========================================
+  // SUPABASE BÖLÜMÜ (KULLANICI & AUTH)
+  // ==========================================
+
+  async registerUser(regData: UserRegistration) {
+    if (!supabase) throw new Error("Supabase bağlantısı yapılandırılmamış.");
+
+    try {
+      // 1. Unique Kontrolü
+      const { data: existing, error: checkError } = await supabase
+        .from('registrations')
+        .select('email, nickname')
+        .or(`email.eq.${regData.email},nickname.eq.${regData.nickname}`);
+
+      if (checkError) throw checkError;
+
+      if (existing && existing.length > 0) {
+        const found = existing[0];
+        if (found.email === regData.email) throw new Error('Bu email adresi zaten sistemde kayıtlı.');
+        if (found.nickname === regData.nickname) throw new Error('Bu nickname başkası tarafından alınmış.');
+      }
+
+      // 2. Kayıt Ekleme
+      const { error: insertError } = await supabase
+        .from('registrations')
+        .insert([{
+          nickname: regData.nickname,
+          full_name: regData.fullName,
+          email: regData.email,
+          password: regData.password, // Not: Prodüksiyonda hashlenmeli veya Supabase Auth kullanılmalı.
+          criminal_record_file: regData.criminal_record_file,
+          insurance_file: regData.insurance_file,
+          status: 'pending'
+        }]);
+
+      if (insertError) throw insertError;
+
+    } catch (e) { handleFetchError(e, 'registerUser (Supabase)'); }
+  },
+
+  async registerGoogleUser(email: string, fullName: string, nickname: string) {
+    if (!supabase) return;
+    try {
+      const { data } = await supabase.from('registrations').select('id').eq('email', email).single();
+      if (data) return; // Zaten var
+
+      await supabase.from('registrations').insert([{
+        nickname: nickname,
+        full_name: fullName,
+        email: email,
+        password: 'google_oauth_no_password',
+        status: 'pending'
+      }]);
+    } catch (e) { handleFetchError(e, 'registerGoogleUser'); }
+  },
+
+  async loginUser(email: string, pass: string): Promise<UserRegistration | null> {
+    if (!supabase) throw new Error("Supabase ayarları eksik.");
+    
+    try {
+      // Supabase'den kullanıcıyı sorgula
+      const { data, error } = await supabase
+        .from('registrations')
+        .select('*')
+        .eq('email', email)
+        .eq('password', pass)
+        .maybeSingle(); // single() yerine maybeSingle() çoklu kayıt hatasını önler
+
+      if (error) throw error;
+      if (!data) return null; // Kullanıcı bulunamadı
+
+      // Statü kontrolleri
+      if (data.status === 'rejected') throw new Error('Başvurunuz reddedildi. Lütfen yönetici ile iletişime geçin.');
+      if (data.status === 'pending') throw new Error('Hesabınız henüz onaylanmadı. Lütfen bekleyiniz.');
+
+      return { 
+        id: data.id,
+        nickname: data.nickname,
+        fullName: data.full_name,
+        email: data.email,
+        status: data.status,
+        created_at: data.created_at,
+        criminal_record_file: data.criminal_record_file,
+        insurance_file: data.insurance_file
+      } as UserRegistration;
+
+    } catch (e: any) { 
+      if (e.message && (e.message.includes('onaylanmadı') || e.message.includes('bekleyiniz') || e.message.includes('reddedildi'))) throw e;
+      console.error("Supabase Login Error:", e);
+      throw new Error("Giriş sırasında hata: " + e.message); 
+    }
+  },
+
+  async loginWithGoogle(email: string): Promise<UserRegistration | null> {
+    if (!supabase) return null;
+    try {
+      const { data, error } = await supabase
+        .from('registrations')
+        .select('*')
+        .eq('email', email)
+        .maybeSingle();
+
+      if (error) throw error;
+      if (!data) return null;
+
+      if (data.status === 'rejected') throw new Error('Bu Google hesabına bağlı başvuru reddedildi.');
+      if (data.status === 'pending') throw new Error('Google hesabınızla ilişkili başvuru henüz onaylanmadı.');
+      
+      return { 
+          id: data.id,
+          nickname: data.nickname,
+          fullName: data.full_name,
+          email: data.email,
+          status: data.status,
+          created_at: data.created_at 
+      } as UserRegistration;
+
+    } catch (e: any) { 
+      if (e.message && (e.message.includes('onaylanmadı') || e.message.includes('reddedildi'))) throw e;
+      return null; 
+    }
+  },
+
+  async adminLogin(user: string, pass: string): Promise<boolean> {
+    if (!supabase) return user === 'admin' && pass === 'password123';
+    try {
+      // Admin şifresini de Supabase system_config tablosundan çekelim
+      const { data, error } = await supabase
+        .from('system_config')
+        .select('*')
+        .in('key', ['admin_username', 'admin_password']);
+      
+      if (error || !data) return user === 'admin' && pass === 'password123';
+
+      const dbAdmin = data.find(r => r.key === 'admin_username')?.value;
+      const dbPass = data.find(r => r.key === 'admin_password')?.value;
+      
+      if (!dbAdmin || !dbPass) return user === 'admin' && pass === 'password123';
+      
+      return user === dbAdmin && pass === dbPass;
+    } catch (e) { 
+      return user === 'admin' && pass === 'password123'; 
+    }
+  },
+
+  async getAllRegistrations(): Promise<UserRegistration[]> {
+    if (!supabase) return [];
+    try {
+      const { data, error } = await supabase
+        .from('registrations')
+        .select('*')
+        .order('created_at', { ascending: false });
+      
+      if (error) throw error;
+
+      return data.map((d: any) => ({ 
+          ...d, 
+          fullName: d.full_name, // Mapping snake_case -> camelCase
+          created_at: d.created_at
+      })) as UserRegistration[];
+    } catch (err: any) { 
+      console.warn("Supabase getAllRegistrations error:", err.message);
+      return []; 
+    }
+  },
+
+  async updateRegistrationStatus(id: string, status: 'approved' | 'rejected') {
+    if (!supabase) return;
+    try {
+      const { error } = await supabase
+        .from('registrations')
+        .update({ status })
+        .eq('id', id);
+      
+      if (error) throw error;
+    } catch (e) { handleFetchError(e, 'updateStatus (Supabase)'); }
+  },
+
+  // --- BOT CONFIG ---
+  // Bot config'i de Supabase'e taşıyabiliriz veya PB'de kalabilir. 
+  // Yönetim kolaylığı için Supabase'de tutalım.
+  async getBotConfig(): Promise<string> {
+    if (!supabase) return "Sen mIRC botu Lara'sın.";
+    try {
+      const { data, error } = await supabase
+        .from('system_config')
+        .select('value')
+        .eq('key', 'bot_personality')
+        .single();
+        
+      if (error || !data) return "Sen mIRC botu Lara'sın.";
+      return data.value;
+    } catch (e) { return "Sen mIRC botu Lara'sın."; }
+  },
+
+  async updateBotConfig(personality: string) {
+    if (!supabase) return;
+    try {
+      // Upsert (Varsa güncelle, yoksa ekle)
+      const { error } = await supabase
+        .from('system_config')
+        .upsert({ key: 'bot_personality', value: personality }, { onConflict: 'key' });
+
+      if (error) throw error;
+    } catch (e) { handleFetchError(e, 'updateBotConfig (Supabase)'); }
   }
 };

@@ -15,18 +15,16 @@ import {
   Terminal,
   FileText,
   Briefcase,
-  // Added missing Users icon
   Users
 } from 'lucide-react';
 import { storageService } from '../services/storageService';
+import { CHAT_MODULE_CONFIG } from '../config';
 
 interface LandingPageProps {
   onEnter: (userData: any) => void;
   onRegisterClick: () => void;
   onAdminClick?: () => void;
 }
-
-const GOOGLE_CLIENT_ID = "444278057283-6dukljlihlpau48m625o2foulcnc04b3.apps.googleusercontent.com";
 
 const LandingPage: React.FC<LandingPageProps> = ({ onEnter, onRegisterClick, onAdminClick }) => {
   const [showLoginForm, setShowLoginForm] = useState(false);
@@ -39,24 +37,29 @@ const LandingPage: React.FC<LandingPageProps> = ({ onEnter, onRegisterClick, onA
   const initGoogleIdentity = () => {
     const google = (window as any).google;
     if (google?.accounts?.id) {
-      google.accounts.id.initialize({
-        client_id: GOOGLE_CLIENT_ID,
-        callback: handleGoogleResponse,
-        auto_select: false,
-        cancel_on_tap_outside: true
-      });
-
-      const buttonContainer = document.getElementById('google-button-container');
-      if (buttonContainer) {
-        google.accounts.id.renderButton(buttonContainer, {
-          theme: 'outline',
-          size: 'large',
-          width: '100%',
-          text: 'signin_with',
-          shape: 'rectangular'
+      try {
+        google.accounts.id.initialize({
+          client_id: CHAT_MODULE_CONFIG.GOOGLE_CLIENT_ID,
+          callback: handleGoogleResponse,
+          auto_select: false,
+          cancel_on_tap_outside: true
         });
+
+        const buttonContainer = document.getElementById('google-button-container');
+        if (buttonContainer) {
+          google.accounts.id.renderButton(buttonContainer, {
+            theme: 'outline',
+            size: 'large',
+            width: '100%',
+            text: 'signin_with',
+            shape: 'rectangular'
+          });
+        }
+        return true;
+      } catch (e) {
+        console.error("Google Identity Init Error:", e);
+        return false;
       }
-      return true;
     }
     return false;
   };
@@ -117,7 +120,8 @@ const LandingPage: React.FC<LandingPageProps> = ({ onEnter, onRegisterClick, onA
         setError('Email veya şifre hatalı.');
       }
     } catch (err: any) {
-      setError(err.message || 'Giriş hatası.');
+      console.error(err);
+      setError(err.message || 'Giriş hatası. Sunucuya bağlanılamıyor.');
     } finally {
       setLoading(false);
     }
@@ -129,7 +133,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onEnter, onRegisterClick, onA
       {/* SECTION 1: HERO (PDF Page 1) */}
       <section className="min-h-screen flex flex-col">
         <header className="p-4 flex justify-between items-center text-[10px] opacity-40 font-bold uppercase tracking-widest border-b border-white/5">
-          <span>31.12.2025 00:49</span>
+          <span>{new Date().toLocaleDateString('tr-TR')}</span>
           <span className="hidden md:block">Workigom Chat | Güvenli Sohbet Platformu</span>
           <button onClick={onAdminClick} className="hover:text-[#00ff99] transition-colors">Yönetici Paneli</button>
         </header>
