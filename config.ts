@@ -1,17 +1,19 @@
 
 /**
- * workigomchat.online - Üretim Ortamı Konfigürasyonu
+ * workigomchat.online - Konfigürasyon
  */
 export const CHAT_MODULE_CONFIG = {
-  VERSION: '1.1.2',
-  DOMAIN: 'workigomchat.online',
-  BASE_URL: 'https://workigomchat.online',
-  // Supabase bağlantı bilgileri
-  SUPABASE_URL: 'https://abunbqqxtpugsjfvvikj.supabase.co',
-  SUPABASE_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFidW5icXF4dHB1Z3NqZnZ2aWtqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYzMTcyNzksImV4cCI6MjA4MTg5MzI3OX0.ld29ijoxlkkCC2uNPnvc4aiTiMEhQvu2bfilH6IOIzo',
-  AUTO_REFRESH_ON_VERSION_MISMATCH: true,
-  DEBUG_MODE: false,
-  STORAGE_PREFIX: 'workigom_chat_prod_'
+  VERSION: '1.2.0',
+  DOMAIN: 'localhost',
+  BASE_URL: 'http://localhost:3000',
+  
+  // PocketBase bağlantı bilgileri
+  // Yerel geliştirme ortamı için 127.0.0.1:8090 kullanıyoruz.
+  POCKETBASE_URL: 'http://127.0.0.1:8090',
+  
+  AUTO_REFRESH_ON_VERSION_MISMATCH: false,
+  DEBUG_MODE: true,
+  STORAGE_PREFIX: 'workigom_chat_pb_'
 };
 
 if (typeof window !== 'undefined' && (window as any).WORKIGOM_CONFIG) {

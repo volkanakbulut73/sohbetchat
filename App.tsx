@@ -18,9 +18,16 @@ const App: React.FC = () => {
   const [loadingState, setLoadingState] = useState<LoadingState>({ status: 'idle' });
   const [blockedUserIds, setBlockedUserIds] = useState<string[]>([]);
   
+  // Realtime güncellemeleri için ref kullanıyoruz
+  const activeRoomIdRef = useRef(activeRoomId);
+
+  useEffect(() => {
+    activeRoomIdRef.current = activeRoomId;
+  }, [activeRoomId]);
+  
   const activeRoom = useMemo(() => rooms.find(r => r.id === activeRoomId) || rooms[0], [rooms, activeRoomId]);
 
-  // Katılımcıları Senkronize Et
+  // Katılımcıları Senkronize Et (Polling - 30sn)
   const syncRealUsers = useCallback(async () => {
     if (!storageService.isConfigured()) return;
     try {
@@ -43,50 +50,68 @@ const App: React.FC = () => {
     } catch (err) { console.error("User sync error:", err); }
   }, [currentUser]);
 
-  // Mesajları Senkronize Et
-  const syncMessages = useCallback(async () => {
+  // İlk Mesaj Yüklemesi
+  const loadInitialMessages = useCallback(async () => {
     if (!storageService.isConfigured() || currentView !== 'CHAT') return;
     try {
       for (const room of rooms) {
         const dbMessages = await storageService.getMessagesByChannel(room.name);
-        
         setRooms(prevRooms => prevRooms.map(r => {
           if (r.name !== room.name) return r;
-          
           const existingIds = new Set(r.messages.map(m => m.id));
           const newMessages = dbMessages.filter(m => !existingIds.has(m.id)).map(m => {
             const senderPart = r.participants.find(p => p.name === m.sender);
             return { ...m, senderId: senderPart?.id || 'system' };
           });
-
           if (newMessages.length === 0) return r;
-
-          // Eğer oda aktif değilse ve yeni mesaj geldiyse uyarı (flash) yak
-          const shouldAlert = r.id !== activeRoomId && newMessages.length > 0;
-
           return {
             ...r,
             messages: [...r.messages, ...newMessages].sort((a, b) => a.timestamp - b.timestamp),
             lastMessageAt: Math.max(r.lastMessageAt, ...newMessages.map(m => m.timestamp)),
-            hasAlert: r.hasAlert || shouldAlert
           };
         }));
       }
-    } catch (err) { console.error("Message sync error:", err); }
-  }, [rooms, activeRoomId, currentView]);
+    } catch (err) { console.error("Initial load error:", err); }
+  }, [currentView]); // rooms bağımlılığı kaldırıldı, sonsuz döngü engellendi
 
   useEffect(() => {
     if (currentView === 'CHAT') {
       syncRealUsers();
-      syncMessages();
+      loadInitialMessages();
+
+      // Realtime Abonelik Başlat
+      const initRealtime = async () => {
+        await storageService.subscribeToMessages((newMsg) => {
+          setRooms(prevRooms => prevRooms.map(r => {
+            if (r.name !== newMsg.channel) return r;
+            if (r.messages.some(m => m.id === newMsg.id)) return r; // Mükerrer kontrolü
+
+            const senderPart = r.participants.find(p => p.name === newMsg.sender);
+            const processedMsg = { ...newMsg, senderId: senderPart?.id || 'system' };
+            
+            // Eğer mesaj gelen oda aktif oda değilse uyarı ver
+            const shouldAlert = r.id !== activeRoomIdRef.current;
+
+            return {
+              ...r,
+              messages: [...r.messages, processedMsg].sort((a, b) => a.timestamp - b.timestamp),
+              lastMessageAt: processedMsg.timestamp,
+              hasAlert: r.hasAlert || shouldAlert
+            };
+          }));
+        });
+      };
+      
+      initRealtime();
+
       const userInterval = setInterval(syncRealUsers, 30000);
-      const msgInterval = setInterval(syncMessages, 3000); 
+      
       return () => {
         clearInterval(userInterval);
-        clearInterval(msgInterval);
+        storageService.unsubscribeFromMessages();
       };
     }
-  }, [currentView, syncRealUsers, syncMessages]);
+  }, [currentView, syncRealUsers, loadInitialMessages]);
 
   const handleLoginSuccess = (userData: UserRegistration) => {
     const participant: Participant = {
@@ -115,15 +140,62 @@ const App: React.FC = () => {
         type: MessageType.USER,
         channel: activeRoom.name
       });
-      syncMessages();
+      // Realtime zaten güncelleyeceği için manuel sync gerekmez
+      
+      // Bot Tetikleme
+      if (activeRoom.type === 'channel') {
+        const bots = activeRoom.participants.filter(p => p.isAi);
+        if (bots.length > 0) {
+          const randomBot = bots[Math.floor(Math.random() * bots.length)];
+          // Bot yanıtı gecikmeli gelir
+          setTimeout(() => triggerBotResponse(randomBot.id, activeRoomId), 1500);
+        }
+      }
     } catch (err) { console.error("Mesaj hatası:", err); }
-  }, [activeRoom.name, currentUser, syncMessages]);
+  }, [activeRoom.name, activeRoom.type, activeRoom.participants, currentUser, activeRoomId]);
 
-  // Özel Sohbet Başlat (Çift Tık)
+  const triggerBotResponse = async (botId: string, roomId: string) => {
+    // Odaları ref üzerinden veya state getter ile almak lazım ama burada state kullanıyoruz.
+    // Bot cevabı üretilirken odanın son halini bulmamız lazım.
+    setRooms(currentRooms => {
+      const targetRoom = currentRooms.find(r => r.id === roomId);
+      if (!targetRoom) return currentRooms;
+
+      const bot = targetRoom.participants.find(p => p.id === botId);
+      if (!bot) return currentRooms;
+
+      // Bot düşünme animasyonu (state'i güncelle)
+      setLoadingState({ status: 'thinking', participantId: botId });
+
+      // AI Cevabını oluştur (asenkron olduğu için useEffect dışında çağırıyoruz ama burada state içinde yapamayız)
+      // Bu yüzden logic'i dışarı taşıyoruz.
+      return currentRooms;
+    });
+
+    // AI isteğini yap
+    const targetRoom = rooms.find(r => r.id === roomId); // Closure'dan gelen rooms eski olabilir ama id sabit
+    if(!targetRoom) { setLoadingState({ status: 'idle' }); return; }
+
+    const bot = targetRoom.participants.find(p => p.id === botId);
+    if (!bot) { setLoadingState({ status: 'idle' }); return; }
+
+    try {
+      const responseText = await generateBotResponse(bot, targetRoom.participants, targetRoom.messages, targetRoom.topic);
+      await storageService.saveMessage({
+        sender: bot.name,
+        text: responseText,
+        type: MessageType.USER,
+        channel: targetRoom.name
+      });
+    } catch (err) {
+      console.error("Bot yanıt hatası:", err);
+    } finally {
+      setLoadingState({ status: 'idle' });
+    }
+  };
+
   const handleStartPrivateChat = (target: Participant) => {
     if (target.id === currentUser.id) return;
-
-    // Sabit kanal adı oluştur (id'leri sıralayarak)
     const sortedIds = [currentUser.id, target.id].sort();
     const channelName = `private:${sortedIds[0]}:${sortedIds[1]}`;
     
@@ -147,14 +219,12 @@ const App: React.FC = () => {
     }
   };
 
-  // Engelleme Mantığı
   const toggleBlockUser = (userId: string) => {
     setBlockedUserIds(prev => 
       prev.includes(userId) ? prev.filter(id => id !== userId) : [...prev, userId]
     );
   };
 
-  // Engellenen kullanıcıların mesajlarını gösterme
   const filteredActiveRoom = useMemo(() => {
     return {
       ...activeRoom,
@@ -168,7 +238,6 @@ const App: React.FC = () => {
 
   return (
     <div className="fixed inset-0 flex flex-col bg-[#f1f1f1] overflow-hidden text-black text-xs font-sans">
-      {/* Title Bar */}
       <div className="h-6 bg-[#000080] flex items-center justify-between px-1 text-white shrink-0">
         <div className="flex items-center gap-1 font-bold truncate">
           <Shield size={12} className="text-yellow-400" />
@@ -181,7 +250,6 @@ const App: React.FC = () => {
         </div>
       </div>
 
-      {/* Toolbar */}
       <div className="h-10 bg-[#f1f1f1] border-b border-[#808080] flex items-center px-1 gap-0.5 shrink-0 overflow-x-auto no-scrollbar">
         {[
           { icon: <Power size={14} />, text: 'Kopart' },
@@ -195,7 +263,6 @@ const App: React.FC = () => {
           </button>
         ))}
 
-        {/* Engelleme Butonu (Sadece Özel Mesajda Görünür) */}
         {activeRoom.type === 'private' && activeRoom.targetUserId && (
           <button 
             onClick={() => toggleBlockUser(activeRoom.targetUserId!)}
@@ -210,7 +277,6 @@ const App: React.FC = () => {
         )}
       </div>
 
-      {/* Tabs / Channels */}
       <div className="h-6 bg-white border-b border-[#808080] flex items-center px-1 gap-1 overflow-x-auto no-scrollbar">
         {rooms.map(room => (
           <button
@@ -229,7 +295,6 @@ const App: React.FC = () => {
         ))}
       </div>
 
-      {/* Main Container */}
       <div className="flex-1 flex overflow-hidden mirc-inset bg-white m-0.5">
         <ChatArea 
           room={filteredActiveRoom} 
