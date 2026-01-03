@@ -8,6 +8,9 @@ interface RegistrationFormProps {
   onSuccess: () => void;
 }
 
+// Base64 string limiti için maksimum dosya boyutu (2MB)
+const MAX_FILE_SIZE = 2 * 1024 * 1024; 
+
 const RegistrationForm: React.FC<RegistrationFormProps> = ({ onClose, onSuccess }) => {
   const [formData, setFormData] = useState({
     nickname: '',
@@ -25,6 +28,12 @@ const RegistrationForm: React.FC<RegistrationFormProps> = ({ onClose, onSuccess 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, type: 'criminal' | 'insurance') => {
     const file = e.target.files?.[0];
     if (file) {
+      if (file.size > MAX_FILE_SIZE) {
+        alert(`Dosya boyutu çok büyük! Lütfen 2MB'dan küçük bir dosya yükleyin.\nSizin dosyanız: ${(file.size / 1024 / 1024).toFixed(2)} MB`);
+        e.target.value = ''; // Inputu temizle
+        return;
+      }
+
       const reader = new FileReader();
       reader.onloadend = () => {
         setFiles(prev => ({ ...prev, [type]: reader.result as string }));
@@ -37,6 +46,11 @@ const RegistrationForm: React.FC<RegistrationFormProps> = ({ onClose, onSuccess 
     e.preventDefault();
     if (!files.criminal || !files.insurance) {
       setError('Lütfen tüm belgeleri (Sabıka Kaydı & Sigorta) yükleyiniz.');
+      return;
+    }
+
+    if (formData.password.length < 6) {
+      setError('Şifreniz en az 6 karakter olmalıdır.');
       return;
     }
 
@@ -53,9 +67,15 @@ const RegistrationForm: React.FC<RegistrationFormProps> = ({ onClose, onSuccess 
         insurance_file: files.insurance,
         status: 'pending'
       });
+      alert("Başvurunuz başarıyla alındı! Yönetici onayı sonrası giriş yapabileceksiniz.");
       onSuccess();
     } catch (err: any) {
-      setError(err.message || 'Kayıt sırasında bir hata oluştu.');
+      console.error(err);
+      // Hata mesajını kullanıcı dostu hale getir
+      let msg = err.message || 'Kayıt sırasında bir hata oluştu.';
+      if (msg.includes('nickname')) msg = 'Bu takma ad (nickname) zaten kullanılıyor.';
+      if (msg.includes('email')) msg = 'Bu e-posta adresi zaten kayıtlı.';
+      setError(msg);
     } finally {
       setLoading(false);
     }
@@ -75,7 +95,7 @@ const RegistrationForm: React.FC<RegistrationFormProps> = ({ onClose, onSuccess 
         <form onSubmit={handleSubmit} className="p-6 md:p-8 overflow-y-auto space-y-6">
           <div className="bg-white/50 border border-blue-200 p-4 text-[10px] text-blue-900 font-bold leading-relaxed italic">
             [ Bilgi ]: Başvurunuzun onaylanması için belgelerin eksiksiz ve okunur olması gerekmektedir. 
-            Güvenli bir topluluk için tüm bilgiler kriptografik olarak saklanır.
+            Dosyalarınız (PDF/Resim) maksimum 2MB olmalıdır.
           </div>
 
           {error && (
@@ -138,10 +158,11 @@ const RegistrationForm: React.FC<RegistrationFormProps> = ({ onClose, onSuccess 
                 <input 
                   type="password" 
                   required
+                  minLength={6}
                   value={formData.password}
                   onChange={e => setFormData({...formData, password: e.target.value})}
                   className="w-full border-2 border-gray-400 p-2 text-xs bg-white focus:border-[#000080] outline-none"
-                  placeholder="********"
+                  placeholder="En az 6 karakter"
                 />
               </div>
             </div>
@@ -167,7 +188,7 @@ const RegistrationForm: React.FC<RegistrationFormProps> = ({ onClose, onSuccess 
                   ) : (
                     <div className="flex flex-col items-center text-gray-400">
                       <Upload size={24} />
-                      <span className="text-[9px] font-bold mt-1 uppercase">PDF veya Görsel Yükle</span>
+                      <span className="text-[9px] font-bold mt-1 uppercase">Maks 2MB (PDF/JPG)</span>
                     </div>
                   )}
                 </div>
@@ -190,7 +211,7 @@ const RegistrationForm: React.FC<RegistrationFormProps> = ({ onClose, onSuccess 
                   ) : (
                     <div className="flex flex-col items-center text-gray-400">
                       <Upload size={24} />
-                      <span className="text-[9px] font-bold mt-1 uppercase">PDF veya Görsel Yükle</span>
+                      <span className="text-[9px] font-bold mt-1 uppercase">Maks 2MB (PDF/JPG)</span>
                     </div>
                   )}
                 </div>

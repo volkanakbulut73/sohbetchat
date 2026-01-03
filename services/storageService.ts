@@ -15,10 +15,23 @@ pb.autoCancellation(false);
 
 const handleFetchError = (err: any, context: string) => {
   if (typeof window !== 'undefined' && !navigator.onLine) throw new Error("İnternet bağlantınız yok.");
-  // PocketBase hata yapısını kontrol et
+  
+  // PocketBase detaylı hata çözümlemesi
   const msg = err.message || err.data?.message || String(err);
+  
+  // Validation hatalarını birleştir
+  if (err.data?.data) {
+    const details = Object.entries(err.data.data)
+      .map(([key, val]: [string, any]) => `${key}: ${val.message}`)
+      .join(', ');
+    if (details) {
+      console.error(`PocketBase Validation Error [${context}]:`, details);
+      throw new Error(details);
+    }
+  }
+
   console.error(`PocketBase Error [${context}]:`, msg, err.data);
-  // throw new Error(msg); // Hataları fırlatmak yerine konsola basıp devam edelim (UI kırılmasın)
+  throw new Error(msg); 
 };
 
 export const storageService = {
@@ -76,15 +89,21 @@ export const storageService = {
 
   async registerUser(regData: UserRegistration) {
     try {
+      // Önce manuel unique kontrolü yapalım (Daha temiz hata mesajı için)
       try {
         const existing = await pb.collection('registrations').getList(1, 1, {
             filter: `email="${regData.email}" || nickname="${regData.nickname}"`
         });
         if (existing.totalItems > 0) {
+            // Hangisinin çakıştığını bulmaya çalış
+            const found = existing.items[0];
+            if (found.email === regData.email) throw new Error('Bu email adresi zaten sistemde kayıtlı.');
+            if (found.nickname === regData.nickname) throw new Error('Bu nickname başkası tarafından alınmış.');
             throw new Error('Bu email veya nickname zaten kullanımda.');
         }
       } catch (checkErr: any) {
-          if (checkErr.message === 'Bu email veya nickname zaten kullanımda.') throw checkErr;
+          // Eğer bizim fırlattığımız hataysa yukarı gönder
+          if (checkErr.message.includes('zaten')) throw checkErr;
       }
 
       await pb.collection('registrations').create({
@@ -96,7 +115,7 @@ export const storageService = {
         insurance_file: regData.insurance_file,
         status: 'pending'
       });
-    } catch (e) { handleFetchError(e, 'registerUser'); throw e; }
+    } catch (e) { handleFetchError(e, 'registerUser'); }
   },
 
   async registerGoogleUser(email: string, fullName: string, nickname: string) {
